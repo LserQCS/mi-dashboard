@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "pages/api/BigQueryLogistic.js":        { "maxDuration": 30 },
+    "pages/api/ProgramacionFoodNoFood.js":  { "maxDuration": 15 },
+    "pages/api/DriverCostSinDistribuir.js": { "maxDuration": 15 },
+    "pages/api/ProgramacionCobertura.js":   { "maxDuration": 15 }
+  }
+}
