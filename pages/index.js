@@ -214,6 +214,23 @@ export default function Dashboard() {
             <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>
               {applied.desde} → {applied.hasta} · BigQuery + Google Sheets
             </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              {[
+                { href: "/",            label: "Disponibilidad", active: true  },
+                { href: "/operacional", label: "Operacional",    active: false },
+                { href: "/costos",      label: "Costos",         active: false },
+              ].map(({ href, label, active }) => (
+                <a key={href} href={href} style={{
+                  padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500,
+                  textDecoration: "none",
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "#fff" : "var(--muted)",
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                }}>
+                  {label}
+                </a>
+              ))}
+            </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             {/* Filtros rápidos */}

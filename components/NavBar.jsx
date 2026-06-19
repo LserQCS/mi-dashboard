@@ -4,6 +4,7 @@ import Link from "next/link";
 const TABS = [
   { href: "/",            label: "📦 Disponibilidad" },
   { href: "/operacional", label: "📊 Operacional"    },
+  { href: "/costos",      label: "💰 Costos"         },
 ];
 
 export default function NavBar() {
