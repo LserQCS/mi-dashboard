@@ -180,9 +180,18 @@ export default function CostosPage() {
               })}
             </nav>
           </div>
-          <div style={{ fontSize: 12, color: TEXT2, display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, display: "inline-block" }} />
-            Control de Costos y Ganancias 2026
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 12, color: TEXT2, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: GREEN, display: "inline-block" }} />
+              Control de Costos y Ganancias 2026
+            </div>
+            <Link href="/tabla" style={{
+              fontSize: 12, fontWeight: 600, color: "#93c5fd",
+              textDecoration: "none", padding: "4px 12px", borderRadius: 6,
+              border: "1px solid #1e3a5f", background: "rgba(59,130,246,0.1)",
+            }}>
+              Tabla por semana →
+            </Link>
           </div>
         </div>
 

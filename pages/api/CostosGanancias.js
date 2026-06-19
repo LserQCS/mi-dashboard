@@ -144,6 +144,10 @@ async function fetchCSV(url) {
   return res.text();
 }
 
+// ─── Semanas válidas (solo S1–S24 2026) ──────────────────────────────────────
+
+const VALID_SEMANAS = new Set(SEMANAS.map(s => s.s));
+
 // ─── Acumulador ───────────────────────────────────────────────────────────────
 
 function makeAcc() {
@@ -152,7 +156,10 @@ function makeAcc() {
 }
 
 function add(acc, cliente, semana, ingreso = 0, costo = 0, yango = 0) {
-  const c = CLIENTE_MAP[cliente] ?? cliente;
+  // Descartar semanas fuera del calendario 2026 (evita S25–S53 de años anteriores)
+  if (!VALID_SEMANAS.has(semana)) return;
+  // Normalizar cliente; desconocidos → "Clientes Wosak" (igual que costs.ts original)
+  const c = CLIENTE_MAP[cliente] ?? "Clientes Wosak";
   if (!c) return;
   if (!acc.has(c)) acc.set(c, new Map());
   const sem = acc.get(c);
@@ -480,6 +487,20 @@ function buildResponse(acc) {
   const tYan  = resumenClientes.reduce((s, c) => s + c.costoYango, 0);
   const tMar  = tIng > 0 ? (tIng - tCos - tYan) / tIng : 0;
 
+  // porClienteSemana: { [cliente]: { [semana]: { ingreso, costo, yango } } }
+  // Usado por /tabla para calcular tablas por semana y mes
+  const porClienteSemana = {};
+  for (const [cliente, semsMap] of acc.entries()) {
+    porClienteSemana[cliente] = {};
+    for (const [semana, vals] of semsMap.entries()) {
+      porClienteSemana[cliente][semana] = {
+        ingreso: Math.round(vals.ingreso * 100) / 100,
+        costo:   Math.round(vals.costo   * 100) / 100,
+        yango:   Math.round(vals.yango   * 100) / 100,
+      };
+    }
+  }
+
   return {
     resumenClientes,
     evolucionSemanal,
@@ -491,6 +512,7 @@ function buildResponse(acc) {
       utilidad:       Math.round(tIng - tCos - tYan),
     },
     semanas: evolucionSemanal.map(e => e.semana),
+    porClienteSemana,
   };
 }
 
