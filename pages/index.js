@@ -328,9 +328,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Filtros del Tareo (solo en tab Disponibilidad) ─────────────────── */}
+        {/* ── Filtros del Tareo (ambos tabs) ────────────────────────────────── */}
         {(mainTab === "disponibilidad" || mainTab === "analisis") && (
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", position: "sticky", top: 48, zIndex: 100 }}>
             <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Filtros Tareo</span>
             <div style={{ width: 1, height: 16, background: "var(--border)" }} />
             {/* Semanas */}

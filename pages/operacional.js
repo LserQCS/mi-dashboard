@@ -530,7 +530,7 @@ export default function Operacional() {
       <div style={{ background: BG, minHeight: "calc(100vh - 48px)", fontFamily: "'Inter', system-ui, sans-serif" }}>
 
         {/* Sub-header */}
-        <div style={{ background: SURFACE, borderBottom: "1px solid " + BORDER, padding: "0 2rem" }}>
+        <div style={{ background: SURFACE, borderBottom: "1px solid " + BORDER, padding: "0 2rem", position: "sticky", top: 48, zIndex: 150 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 52 }}>
             <div style={{ display: "flex", gap: 4 }}>
               {(["productividad"]).map(tab => (
@@ -553,7 +553,7 @@ export default function Operacional() {
         <div style={{ padding: "1.25rem 2rem" }}>
 
           {/* Filtros */}
-          <div style={{ background: CARD, border: "1px solid " + BORDER, borderRadius: 12, padding: "0.9rem 1.25rem", marginBottom: "1.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.9rem" }}>
+          <div style={{ background: CARD, border: "1px solid " + BORDER, borderRadius: 12, padding: "0.9rem 1.25rem", marginBottom: "1.25rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.9rem", position: "sticky", top: 100, zIndex: 100 }}>
             <span style={{ color: TEXT2, fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Filtros</span>
             <div style={{ width: 1, height: 18, background: BORDER2 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
