@@ -4,6 +4,6 @@
     "pages/api/ProgramacionFoodNoFood.js":  { "maxDuration": 15 },
     "pages/api/DriverCostSinDistribuir.js": { "maxDuration": 15 },
     "pages/api/ProgramacionCobertura.js":   { "maxDuration": 15 },
-    "pages/api/CostosGanancias.js":         { "maxDuration": 30 }
+    "pages/api/Analisis.js":               { "maxDuration": 30 }
   }
 }
