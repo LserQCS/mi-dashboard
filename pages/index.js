@@ -218,7 +218,6 @@ export default function Dashboard() {
               {[
                 { href: "/",            label: "Disponibilidad", active: true  },
                 { href: "/operacional", label: "Operacional",    active: false },
-                { href: "/costos",      label: "Costos",         active: false },
               ].map(({ href, label, active }) => (
                 <a key={href} href={href} style={{
                   padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -449,3 +448,4 @@ export default function Dashboard() {
     </>
   );
 }
+                                                                                  
