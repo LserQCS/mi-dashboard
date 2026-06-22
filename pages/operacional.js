@@ -1084,4 +1084,22 @@ export default function Operacional() {
                             <LabelList dataKey="pctFaltas" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 2 ? v + "%" : ""} />
                           </Bar>
                           <Bar dataKey="pctSinAsignar" name="Sin Asignar" fill="#ef4444" stackId="s" radius={[0,4,4,0]}>
-                            <LabelList data
+                            <LabelList dataKey="pctSinAsignar" position="right" style={{ fill: "#fca5a5", fontSize: 9 }} formatter={v => Number(v) > 0 ? v + "%" : ""} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </ChartCard>
+                </div>
+              </>
+            )}
+          </>}
+
+          <div style={{ textAlign: "center", color: TEXT2, fontSize: "0.68rem", marginTop: "1.5rem", paddingBottom: "1rem" }}>
+            Dashboard Operacional · Semanas {selSemanas.sort((a, b) => a - b).join(", ")} · Δ vs S{prevS}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
