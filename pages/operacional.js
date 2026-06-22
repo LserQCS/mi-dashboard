@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import NavBar from "../components/NavBar";
 
-const ALL_SEMANAS = [20, 21, 22, 23];
+const ALL_SEMANAS = [21, 22, 23, 24];
 const COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#f97316","#06b6d4","#84cc16","#ec4899","#eab308"];
 const BG="#0a0f1e", SURFACE="#111827", CARD="#1a2236";
 const BORDER="#1f2d45", BORDER2="#263348", TEXT="#f8fafc", TEXT2="#94a3b8", ACCENT="#3b82f6";
@@ -129,7 +129,7 @@ export default function Operacional() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [selSemanas, setSelSemanas] = useState([21, 22, 23]);
+  const [selSemanas, setSelSemanas] = useState([22, 23, 24]);
   const [selFood, setSelFood] = useState("Food");
   const [selPedidos, setSelPedidos] = useState("Con Pedidos");
   const [selPoligono, setSelPoligono] = useState("Todos");
