@@ -79,11 +79,11 @@ function EtapaRow({ label, avg, benchmark }) {
 
 const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
 
-export default function AnalisisTab({ desde, hasta }) {
+export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
-  const [selSemanas, setSelSemanas] = useState([23, 24]);
+  const selSemanas = extSemanas ?? ALL_SEMANAS_BRECHA;
   const [showCond, setShowCond]     = useState(false);
 
   useEffect(() => {
@@ -253,17 +253,9 @@ export default function AnalisisTab({ desde, hasta }) {
       <div style={{ ...card, marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>👥 Brecha de Turnos</h3>
-          <div style={{ display: "flex", gap: 5 }}>
-            {ALL_SEMANAS_BRECHA.map((s) => (
-              <button key={s} onClick={() => setSelSemanas((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s])}
-                style={{ padding: "2px 10px", borderRadius: 6, fontSize: "0.7rem",
-                  border: `1px solid ${selSemanas.includes(s) ? BLUE : BORDER}`,
-                  background: selSemanas.includes(s) ? "rgba(59,130,246,0.2)" : "transparent",
-                  color: selSemanas.includes(s) ? "#93c5fd" : MUTED, cursor: "pointer" }}>
-                S{s}
-              </button>
-            ))}
-          </div>
+          <span style={{ color: MUTED, fontSize: "0.7rem" }}>
+            Semanas: {selSemanas.map(s => `S${s}`).join(", ")}
+          </span>
         </div>
         {brechaRows.length === 0 ? (
           <p style={{ color: MUTED, fontSize: "0.78rem" }}>Sin datos para las semanas seleccionadas.</p>
