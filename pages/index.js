@@ -144,11 +144,11 @@ function ProveedorTable({ data = [] }) {
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 const QUICK_FILTERS = [
-  { label: "Esta semana",      getRange: () => ({ desde: lunesDeHoy(),                             hasta: peruDate(0) }) },
-  { label: "Sem. pasada",      getRange: () => ({ desde: (() => { const d = new Date(lunesDeHoy()+"T00:00:00Z"); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })(),
-                                                   hasta: (() => { const d = new Date(lunesDeHoy()+"T00:00:00Z"); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() }) },
-  { label: "Últimas 2 sem.",   getRange: () => ({ desde: peruDate(-13), hasta: peruDate(0) }) },
-  { label: "Este mes",         getRange: () => ({ desde: (() => { const d = new Date(Date.now()-5*3600_000); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; })(), hasta: peruDate(0) }) },
+  { label: "Esta semana",    getRange: () => ({ desde: lunesDeHoy(), hasta: peruDate(0) }) },
+  { label: "Sem. pasada",    getRange: () => ({ desde: (() => { const d = new Date(lunesDeHoy()+"T00:00:00Z"); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })(),
+                                                 hasta: (() => { const d = new Date(lunesDeHoy()+"T00:00:00Z"); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() }) },
+  { label: "Últimas 2 sem.", getRange: () => ({ desde: peruDate(-13), hasta: peruDate(0) }) },
+  { label: "Este mes",       getRange: () => ({ desde: (() => { const d = new Date(Date.now()-5*3600_000); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; })(), hasta: peruDate(0) }) },
 ];
 
 const ALL_SEMANAS = [21, 22, 23, 24];
@@ -240,10 +240,10 @@ export default function Dashboard() {
   const pctOk     = kd.total_pedidos > 0 ? (kd.dentro_obj / kd.total_pedidos) * 100 : null;
   const pctOkPrev = kp.total_pedidos > 0 ? (kp.dentro_obj / kp.total_pedidos) * 100 : null;
 
-  const pctSimples     = kd.total_pedidos > 0 ? ((kd.total_simples / kd.total_pedidos) * 100).toFixed(1) : "—";
-  const pctMulti       = kd.total_pedidos > 0 ? ((kd.total_multi   / kd.total_pedidos) * 100).toFixed(1) : "—";
-  const simplesOkPct   = kd.total_simples > 0 ? ((kd.simples_ok    / kd.total_simples) * 100).toFixed(1) : "0.0";
-  const multiOkPct     = kd.total_multi   > 0 ? ((kd.multi_ok      / kd.total_multi)   * 100).toFixed(1) : "0.0";
+  const pctSimples   = kd.total_pedidos > 0 ? ((kd.total_simples / kd.total_pedidos) * 100).toFixed(1) : "—";
+  const pctMulti     = kd.total_pedidos > 0 ? ((kd.total_multi   / kd.total_pedidos) * 100).toFixed(1) : "—";
+  const simplesOkPct = kd.total_simples > 0 ? ((kd.simples_ok    / kd.total_simples) * 100).toFixed(1) : "0.0";
+  const multiOkPct   = kd.total_multi   > 0 ? ((kd.multi_ok      / kd.total_multi)   * 100).toFixed(1) : "0.0";
 
   const quickBtnStyle = (active) => ({
     padding: "5px 12px", borderRadius: 6, border: "1px solid var(--border)",
@@ -418,4 +418,171 @@ export default function Dashboard() {
               {kpis.loading ? "…" : kd.total_pedidos?.toLocaleString()}
               <VarBadge current={kd.total_pedidos} prev={kp.total_pedidos} />
             </div>
-            <div className="
+            <div className="kpi-sub">{applied.desde} → {applied.hasta}</div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label">Cumplimiento</div>
+            <div className="kpi-value kpi-green">
+              {kpis.loading ? "…" : pctOk != null ? `${pctOk.toFixed(1)}%` : "—"}
+              <VarBadge current={pctOk} prev={pctOkPrev} />
+            </div>
+            <div className="kpi-sub">{kd.dentro_obj?.toLocaleString() ?? "—"} dentro de objetivo</div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label">Fuera objetivo</div>
+            <div className="kpi-value kpi-red">
+              {kpis.loading ? "…" : kd.fuera_obj?.toLocaleString()}
+              <VarBadge current={kd.fuera_obj} prev={kp.fuera_obj} invert />
+            </div>
+            <div className="kpi-sub">Simple &gt;45 min · Multi &gt;75 min</div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label">Drivers activos</div>
+            <div className="kpi-value kpi-blue">
+              {kpis.loading ? "…" : kd.drivers_activos?.toLocaleString()}
+              <VarBadge current={kd.drivers_activos} prev={kp.drivers_activos} />
+            </div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label">Prom. entrega</div>
+            <div className="kpi-value">
+              {kpis.loading ? "…" : `${kd.avg_min_entrega ?? "—"} min`}
+              <VarBadge current={kd.avg_min_entrega} prev={kp.avg_min_entrega} invert />
+            </div>
+            <div className="kpi-sub">Creación → finalizado</div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label">Proveedores</div>
+            <div className="kpi-value">
+              {kpis.loading ? "…" : kd.proveedores?.toLocaleString()}
+              <VarBadge current={kd.proveedores} prev={kp.proveedores} />
+            </div>
+          </div>
+        </div>
+
+        {/* Desglose simples vs multipedidos */}
+        {!kpis.loading && kd.total_pedidos > 0 && (
+          <div style={{ display: "flex", gap: 14, marginBottom: 20, flexWrap: "wrap" }}>
+            <div className="kpi-card" style={{ flex: "1 1 220px" }}>
+              <div className="kpi-label">
+                Pedidos simples — objetivo ≤ 45 min
+                <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 6, fontSize: 11 }}>
+                  ({pctSimples}% del total)
+                </span>
+              </div>
+              <div className="kpi-value kpi-blue">
+                {kd.total_simples?.toLocaleString()}
+                <VarBadge current={kd.total_simples} prev={kp.total_simples} />
+              </div>
+              <div className="kpi-sub">
+                <span className={parseFloat(simplesOkPct) >= 80 ? "kpi-green" : "kpi-red"}>
+                  {simplesOkPct}% OK
+                </span>
+                {" · "}{kd.simples_fuera?.toLocaleString()} fuera
+              </div>
+            </div>
+
+            <div className="kpi-card" style={{ flex: "1 1 220px" }}>
+              <div className="kpi-label">
+                Multipedidos — objetivo ≤ 75 min
+                <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 6, fontSize: 11 }}>
+                  ({pctMulti}% del total)
+                </span>
+              </div>
+              <div className="kpi-value kpi-blue">
+                {kd.total_multi?.toLocaleString()}
+                <VarBadge current={kd.total_multi} prev={kp.total_multi} />
+              </div>
+              <div className="kpi-sub">
+                <span className={kd.total_multi > 0 && parseFloat(multiOkPct) >= 80 ? "kpi-green" : "kpi-red"}>
+                  {multiOkPct}% OK
+                </span>
+                {" · "}{kd.multi_fuera?.toLocaleString()} fuera
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Causas de demora + Etapas */}
+        <div className="grid-2">
+          <div className="section">
+            <div className="section-title">
+              Causas de demora — pedidos fuera objetivo ({fuera.toLocaleString()})
+              {kp.fuera_obj != null && (
+                <VarBadge current={fuera} prev={kp.fuera_obj} invert />
+              )}
+            </div>
+            {kpis.loading ? <div className="spinner" /> : (
+              <>
+                <CausaBar label="Preparación tienda (O − Creación > 25 min)" count={kd.causa_tienda}     total={fuera} color="var(--yellow)" />
+                <CausaBar label="Asignación driver (P − O > 5 min)"          count={kd.causa_asignacion} total={fuera} color="var(--red)" />
+                <CausaBar label="Viaje al local (Q − P > 10 min)"            count={kd.causa_viaje}      total={fuera} color="#f97316" />
+                <CausaBar label="Reparto (U − S > 12 min)"                   count={kd.causa_reparto}    total={fuera} color="#a855f7" />
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
+                  * Un pedido puede tener múltiples causas
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="section">
+            <div className="section-title">Tiempo promedio por etapa</div>
+            {kpis.loading ? <div className="spinner" /> : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                <EtapaCard label="Prep. tienda (O−Creación)" avg={kd.avg_prep}       avgPrev={kp.avg_prep}       umbral={25} />
+                <EtapaCard label="Asignación (P−O)"          avg={kd.avg_asignacion} avgPrev={kp.avg_asignacion} umbral={5}  />
+                <EtapaCard label="Viaje al local (Q−P)"      avg={kd.avg_viaje}      avgPrev={kp.avg_viaje}      umbral={10} />
+                <EtapaCard label="Reparto (U−S)"             avg={kd.avg_reparto}    avgPrev={kp.avg_reparto}    umbral={12} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cumplimiento por proveedor */}
+        <div className="grid-2">
+          <div className="section">
+            <div className="section-title">Cumplimiento por proveedor</div>
+            {proveedor.loading ? <div className="spinner" />
+             : proveedor.error ? <div className="error-msg">⚠ {proveedor.error}</div>
+             : <CumplimientoChart data={(proveedor.data ?? []).map((d) => ({
+                 ...d,
+                 poligono:  `${d.proveedor} ${d.tipo_orden || "Simple"}`,
+                 dentro_45: d.dentro_obj,
+                 fuera_45:  d.fuera_obj,
+               }))} />}
+          </div>
+          <div className="section">
+            <div className="section-title">Detalle por proveedor</div>
+            {proveedor.loading ? <div className="spinner" /> : <ProveedorTable data={proveedor.data ?? []} />}
+          </div>
+        </div>
+
+        {/* Tareo — Cobertura + Métricas */}
+        <div style={{ margin: "0 0 8px", fontSize: 11, letterSpacing: 1, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
+          Bloque 3 · Tareo de drivers — Google Sheets
+        </div>
+        <div className="section">
+          <div className="section-title" style={{ marginBottom: 20 }}>
+            Cobertura y métricas de turnos
+            {!tareo.loading && tareo.data && (
+              <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+                {(tareo.data.food?.length ?? 0) + (tareo.data.no_food?.length ?? 0)} turnos · Food + No Food
+              </span>
+            )}
+          </div>
+          {tareo.loading  ? <div className="spinner" />
+           : tareo.error  ? <div className="error-msg">⚠ {tareo.error}</div>
+           : <TareoAnalysis tareo={tareoFiltrado ?? tareo.data} tendencia={tendencia.data ?? []} />}
+        </div>
+
+        </>} {/* fin tab disponibilidad */}
+
+      </div>
+    </>
+  );
+}
