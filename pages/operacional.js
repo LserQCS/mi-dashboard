@@ -129,7 +129,7 @@ export default function Operacional() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [selSemanas, setSelSemanas] = useState([22, 23, 24]);
+  const [selSemanas, setSelSemanas] = useState([21, 22, 23, 24]);
   const [selFood, setSelFood] = useState("Food");
   const [selPedidos, setSelPedidos] = useState("Con Pedidos");
   const [selPoligono, setSelPoligono] = useState("Todos");
@@ -1072,4 +1072,3 @@ export default function Operacional() {
     </>
   );
 }
-   
