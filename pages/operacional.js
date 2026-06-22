@@ -1028,16 +1028,22 @@ export default function Operacional() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                    <ChartCard title="% Cobertura por Semana">
+                    <ChartCard title="% Distribución de Turnos por Semana">
                       <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={coberturaData} margin={{ top: 34, right: 8, left: 0, bottom: 0 }}>
+                        <BarChart data={coberturaData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
                           <XAxis dataKey="semana" stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 11 }} />
                           <YAxis stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 11 }} domain={[0, 100]} unit="%" />
-                          <Tooltip {...TT} formatter={v => [v + "%", "Cobertura"]} />
-                          <Bar dataKey="pctCobertura" name="% Cobertura" fill={UP} radius={[6,6,0,0]}>
-                            <LabelList dataKey="pctCobertura" position="top" style={{ fill: "#6ee7b7", fontSize: 11, fontWeight: 700 }} formatter={v => v + "%"} />
-                            <LabelList dataKey="varCobertura" content={VarLabelTop} />
+                          <Tooltip {...TT} formatter={v => [v + "%"]} />
+                          <Legend wrapperStyle={{ color: TEXT2, fontSize: 10 }} />
+                          <Bar dataKey="pctCubierto" name="Cubiertos" fill={UP} stackId="s">
+                            <LabelList dataKey="pctCubierto" position="insideTop" style={{ fill: "#fff", fontSize: 10, fontWeight: 600 }} formatter={v => Number(v) > 5 ? v + "%" : ""} />
+                          </Bar>
+                          <Bar dataKey="pctFaltas" name="Faltas" fill="#8b5cf6" stackId="s">
+                            <LabelList dataKey="pctFaltas" position="insideTop" style={{ fill: "#fff", fontSize: 10, fontWeight: 600 }} formatter={v => Number(v) > 2 ? v + "%" : ""} />
+                          </Bar>
+                          <Bar dataKey="pctSinAsignar" name="Sin Asignar" fill="#ef4444" stackId="s" radius={[4,4,0,0]}>
+                            <LabelList dataKey="pctSinAsignar" position="insideTop" style={{ fill: "#fff", fontSize: 10, fontWeight: 600 }} formatter={v => Number(v) > 0 ? v + "%" : ""} />
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -1078,22 +1084,4 @@ export default function Operacional() {
                             <LabelList dataKey="pctFaltas" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 2 ? v + "%" : ""} />
                           </Bar>
                           <Bar dataKey="pctSinAsignar" name="Sin Asignar" fill="#ef4444" stackId="s" radius={[0,4,4,0]}>
-                            <LabelList dataKey="pctSinAsignar" position="right" style={{ fill: "#fca5a5", fontSize: 9 }} formatter={v => Number(v) > 0 ? v + "%" : ""} />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </ChartCard>
-                </div>
-              </>
-            )}
-          </>}
-
-          <div style={{ textAlign: "center", color: TEXT2, fontSize: "0.68rem", marginTop: "1.5rem", paddingBottom: "1rem" }}>
-            Dashboard Operacional · Semanas {selSemanas.sort((a, b) => a - b).join(", ")} · Δ vs S{prevS}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+                            <LabelList data
