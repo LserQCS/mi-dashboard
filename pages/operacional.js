@@ -1068,4 +1068,32 @@ export default function Operacional() {
                         <BarChart data={coberturaPorPoligono} layout="vertical" barSize={14} margin={{ top: 4, right: 50, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
                           <XAxis type="number" stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 10 }} unit="%" domain={[0, 100]} />
-              
+                          <YAxis type="category" dataKey="pol" stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 9 }} width={90} />
+                          <Tooltip {...TT} formatter={v => [v + "%"]} />
+                          <Legend wrapperStyle={{ color: TEXT2, fontSize: 10 }} />
+                          <Bar dataKey="pctCubierto" name="Cubierto" fill={UP} stackId="s">
+                            <LabelList dataKey="pctCubierto" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 5 ? v + "%" : ""} />
+                          </Bar>
+                          <Bar dataKey="pctFaltas" name="Faltas" fill="#8b5cf6" stackId="s">
+                            <LabelList dataKey="pctFaltas" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 2 ? v + "%" : ""} />
+                          </Bar>
+                          <Bar dataKey="pctSinAsignar" name="Sin Asignar" fill="#ef4444" stackId="s" radius={[0,4,4,0]}>
+                            <LabelList dataKey="pctSinAsignar" position="right" style={{ fill: "#fca5a5", fontSize: 9 }} formatter={v => Number(v) > 0 ? v + "%" : ""} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </ChartCard>
+                </div>
+              </>
+            )}
+          </>}
+
+          <div style={{ textAlign: "center", color: TEXT2, fontSize: "0.68rem", marginTop: "1.5rem", paddingBottom: "1rem" }}>
+            Dashboard Operacional · Semanas {selSemanas.sort((a, b) => a - b).join(", ")} · Δ vs S{prevS}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
