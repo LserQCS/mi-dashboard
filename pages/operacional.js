@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList,
 } from "recharts";
 import NavBar from "../components/NavBar";
+import IAAnalysis from "../components/IAAnalysis";
 
 const ALL_SEMANAS = [21, 22, 23, 24];
 const COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#f97316","#06b6d4","#84cc16","#ec4899","#eab308"];
@@ -695,6 +696,30 @@ export default function Operacional() {
 
           {/* ── PRODUCTIVIDAD ───────────────────────────────────────────────── */}
           {activeTab === "productividad" && <>
+            <IAAnalysis panel="operacional" label="Analizar Productividad con IA"
+              datos={{
+                selSemanas, selFood, selPoligono,
+                kpis, kpiDelta,
+                semanas: semanas.map((s) => {
+                  const rows = data.filter(r => Number(r.Periodo) === s);
+                  return {
+                    semana:        s,
+                    pedidos:       rows.reduce((a, r) => a + n(r["Q. Pedidos"]), 0),
+                    drivers:       new Set(rows.map(r => r.Nombre)).size,
+                    productividad: (() => { const h = rows.reduce((a,r)=>a+n(r["Horas Real"]),0); const p = rows.reduce((a,r)=>a+n(r["Q. Pedidos"]),0); return h>0?p/h:0; })(),
+                    costo:         (() => { const c = rows.reduce((a,r)=>a+n(r["Driver Cost"]),0); const p = rows.reduce((a,r)=>a+n(r["Q. Pedidos"]),0); return p>0?c/p:0; })(),
+                    eficiencia:    (() => { const hr = rows.reduce((a,r)=>a+n(r["Horas Real"]),0); const hp = rows.reduce((a,r)=>a+n(r.Horas),0); return hp>0?(hr/hp)*100:0; })(),
+                  };
+                }),
+                porPoligono: poligonos.map((pol) => {
+                  const rows = data.filter(r => r.Poligono === pol);
+                  const ped  = rows.reduce((a,r)=>a+n(r["Q. Pedidos"]),0);
+                  const hrs  = rows.reduce((a,r)=>a+n(r["Horas Real"]),0);
+                  const cst  = rows.reduce((a,r)=>a+n(r["Driver Cost"]),0);
+                  return { poligono: pol, pedidos: ped, productividad: hrs>0?ped/hrs:0, costoPedido: ped>0?cst/ped:0 };
+                }).sort((a,b)=>b.pedidos-a.pedidos).slice(0,10),
+              }}
+            />
             <SectionTitle title="Tendencias por Semana" />
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem" }}>
               <ChartCard title="Productividad por Polígono (pedidos/hora)">
@@ -1043,32 +1068,4 @@ export default function Operacional() {
                         <BarChart data={coberturaPorPoligono} layout="vertical" barSize={14} margin={{ top: 4, right: 50, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
                           <XAxis type="number" stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 10 }} unit="%" domain={[0, 100]} />
-                          <YAxis type="category" dataKey="pol" stroke={TEXT2} tick={{ fill: TEXT2, fontSize: 9 }} width={90} />
-                          <Tooltip {...TT} formatter={v => [v + "%"]} />
-                          <Legend wrapperStyle={{ color: TEXT2, fontSize: 10 }} />
-                          <Bar dataKey="pctCubierto" name="Cubierto" fill={UP} stackId="s">
-                            <LabelList dataKey="pctCubierto" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 5 ? v + "%" : ""} />
-                          </Bar>
-                          <Bar dataKey="pctFaltas" name="Faltas" fill="#8b5cf6" stackId="s">
-                            <LabelList dataKey="pctFaltas" position="insideRight" style={{ fill: "#fff", fontSize: 9, fontWeight: 600 }} formatter={v => Number(v) > 2 ? v + "%" : ""} />
-                          </Bar>
-                          <Bar dataKey="pctSinAsignar" name="Sin Asignar" fill="#ef4444" stackId="s" radius={[0,4,4,0]}>
-                            <LabelList dataKey="pctSinAsignar" position="right" style={{ fill: "#fca5a5", fontSize: 9 }} formatter={v => Number(v) > 0 ? v + "%" : ""} />
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </ChartCard>
-                </div>
-              </>
-            )}
-          </>}
-
-          <div style={{ textAlign: "center", color: TEXT2, fontSize: "0.68rem", marginTop: "1.5rem", paddingBottom: "1rem" }}>
-            Dashboard Operacional · Semanas {selSemanas.sort((a, b) => a - b).join(", ")} · Δ vs S{prevS}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+              

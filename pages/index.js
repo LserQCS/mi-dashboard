@@ -5,6 +5,7 @@ import CumplimientoChart from "../components/CumplimientoChart";
 import TrendChart        from "../components/TrendChart";
 import TareoAnalysis     from "../components/TareoAnalysis";
 import AnalisisTab       from "../components/AnalisisTab";
+import IAAnalysis        from "../components/IAAnalysis";
 import NavBar            from "../components/NavBar";
 
 // ── Helpers de fecha ───────────────────────────────────────────────────────────
@@ -235,6 +236,16 @@ export default function Dashboard() {
 
   const kd   = kpis.data    ?? {};
   const kp   = kpisPrev.data ?? {};
+
+  // Datos para análisis IA — Disponibilidad
+  const datosDisp = useMemo(() => ({
+    desde:     applied.desde,
+    hasta:     applied.hasta,
+    kpis:      kpis.data,
+    prev:      kpisPrev.data,
+    proveedor: proveedor.data ?? [],
+    brecha:    [],   // brecha detallada viene del tab Análisis
+  }), [applied, kpis.data, kpisPrev.data, proveedor.data]);
   const fuera = kd.fuera_obj ?? 0;
 
   const pctOk     = kd.total_pedidos > 0 ? (kd.dentro_obj / kd.total_pedidos) * 100 : null;
@@ -389,6 +400,12 @@ export default function Dashboard() {
         {mainTab === "disponibilidad" && <>
 
         {kpis.error && <div className="error-msg">⚠ BigQuery: {kpis.error}</div>}
+
+        {/* ── Análisis IA ──────────────────────────────────────────────────── */}
+        {!kpis.loading && (
+          <IAAnalysis panel="disponibilidad" datos={datosDisp}
+            label="Analizar Disponibilidad con IA" />
+        )}
 
         {/* ════════════════════════════════════════════════════════════════════
             BLOQUE 1 — TENDENCIA HISTÓRICA
@@ -566,23 +583,4 @@ export default function Dashboard() {
         <div style={{ margin: "0 0 8px", fontSize: 11, letterSpacing: 1, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
           Bloque 3 · Tareo de drivers — Google Sheets
         </div>
-        <div className="section">
-          <div className="section-title" style={{ marginBottom: 20 }}>
-            Cobertura y métricas de turnos
-            {!tareo.loading && tareo.data && (
-              <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
-                {(tareo.data.food?.length ?? 0) + (tareo.data.no_food?.length ?? 0)} turnos · Food + No Food
-              </span>
-            )}
-          </div>
-          {tareo.loading  ? <div className="spinner" />
-           : tareo.error  ? <div className="error-msg">⚠ {tareo.error}</div>
-           : <TareoAnalysis tareo={tareoFiltrado ?? tareo.data} tendencia={tendencia.data ?? []} />}
-        </div>
-
-        </>} {/* fin tab disponibilidad */}
-
-      </div>
-    </>
-  );
-}
+        <div c
