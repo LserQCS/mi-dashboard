@@ -136,7 +136,7 @@ export default function Operacional() {
   const [selCliente, setSelCliente] = useState("Todos");
   const [selTienda, setSelTienda] = useState("Todos");
   const [selVehi, setSelVehi] = useState("Todos");
-  const [activeTab, setActiveTab] = useState("costos");
+  const [activeTab, setActiveTab] = useState("productividad");
 
   const [prog, setProg] = useState([]);
   const [progLoading, setProgLoading] = useState(true);
@@ -532,7 +532,7 @@ export default function Operacional() {
         <div style={{ background: SURFACE, borderBottom: "1px solid " + BORDER, padding: "0 2rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 52 }}>
             <div style={{ display: "flex", gap: 4 }}>
-              {(["costos", "productividad"]).map(tab => (
+              {(["productividad"]).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)} style={{
                   padding: "6px 18px", borderRadius: 8, cursor: "pointer", fontSize: "0.78rem", fontWeight: 600,
                   border: activeTab === tab ? "1px solid " + ACCENT : "1px solid " + BORDER2,
@@ -1072,3 +1072,4 @@ export default function Operacional() {
     </>
   );
 }
+   
