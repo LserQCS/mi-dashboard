@@ -267,34 +267,65 @@ export default function AnalisisTab({ desde, hasta }) {
         </div>
         {brechaRows.length === 0 ? (
           <p style={{ color: MUTED, fontSize: "0.78rem" }}>Sin datos para las semanas seleccionadas.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                {["Polígono","Prog.","Asist.","Ausentes","Ausentismo","Cobertura"].map((h) => (
-                  <th key={h} style={{ padding: "5px 8px", textAlign: h === "Polígono" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
+        ) : (() => {
+          const totalProg  = brechaRows.reduce((s, r) => s + r.prog,  0);
+          const totalAsist = brechaRows.reduce((s, r) => s + r.asist, 0);
+          const totalAus   = totalProg - totalAsist;
+          const ausPct     = totalProg > 0 ? ((totalAus / totalProg) * 100).toFixed(1) : "0.0";
+          const conProblema = brechaRows.filter((r) => r.prog - r.asist > 0).sort((a, b) => b.aus - a.aus);
+          return (
+            <>
+              {/* KPI cards resumen */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: "1rem" }}>
+                {[
+                  { label: "Programados",       val: totalProg,    color: TEXT   },
+                  { label: "Asistentes",         val: totalAsist,   color: GREEN  },
+                  { label: "Ausentes",           val: totalAus,     color: totalAus > 0 ? RED : GREEN },
+                  { label: "Ausentismo global",  val: `${ausPct}%`, color: parseFloat(ausPct) >= 15 ? RED : parseFloat(ausPct) >= 8 ? YELLOW : GREEN },
+                ].map(({ label, val, color }) => (
+                  <div key={label} style={{ background: BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "10px 14px" }}>
+                    <div style={{ fontSize: "0.68rem", color: MUTED, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color }}>{val}</div>
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {brechaRows.map((r, i) => {
-                const aus = r.prog - r.asist;
-                const cob = pct(r.asist, r.prog);
-                const col = r.aus >= 20 ? RED : r.aus >= 10 ? YELLOW : GREEN;
-                return (
-                  <tr key={r.pol} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                    <td style={{ padding: "6px 8px", color: TEXT }}>{r.pol}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{r.prog}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: GREEN }}>{r.asist}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: aus > 0 ? RED : MUTED }}>{aus}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ color: col, fontWeight: 700 }}>{r.aus}%</span></td>
-                    <td style={{ padding: "6px 8px", width: 100 }}><Bar pct={cob} color={cob >= 90 ? GREEN : cob >= 80 ? YELLOW : RED} height={6} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+              </div>
+              {/* Tabla solo con polígonos con ausentes */}
+              {conProblema.length === 0 ? (
+                <p style={{ color: GREEN, fontSize: "0.78rem" }}>✓ Sin ausentes en las semanas seleccionadas.</p>
+              ) : (
+                <>
+                  <div style={{ fontSize: "0.68rem", color: MUTED, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Polígonos con ausentes ({conProblema.length})
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                        {["Polígono","Prog.","Asist.","Ausentes","Ausentismo"].map((h) => (
+                          <th key={h} style={{ padding: "5px 8px", textAlign: h === "Polígono" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {conProblema.map((r, i) => {
+                        const aus = r.prog - r.asist;
+                        const col = r.aus >= 20 ? RED : r.aus >= 10 ? YELLOW : GREEN;
+                        return (
+                          <tr key={r.pol} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                            <td style={{ padding: "6px 8px", color: TEXT }}>{r.pol}</td>
+                            <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{r.prog}</td>
+                            <td style={{ padding: "6px 8px", textAlign: "right", color: GREEN }}>{r.asist}</td>
+                            <td style={{ padding: "6px 8px", textAlign: "right", color: RED, fontWeight: 600 }}>{aus}</td>
+                            <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ color: col, fontWeight: 700 }}>{r.aus}%</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Conductores */}
