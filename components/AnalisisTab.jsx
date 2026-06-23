@@ -413,8 +413,8 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
                 <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 1 }}>
                   <tr style={{ borderBottom: "1px solid #334155" }}>
-                    {["Fecha","Hora","# Orden","Local","Polígono","Driver","Tipo","Total min","Prep","Asig","Viaje","Reparto"].map((h,i) => (
-                      <th key={h} style={{ padding: "6px 8px", textAlign: i >= 7 ? "right" : "left", color: MUTED2, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
+                    {["Fecha","Hora","# Orden","Local","Driver","Tipo","Total min","Prep","Asig","Viaje","Reparto"].map((h,i) => (
+                      <th key={h} style={{ padding: "6px 8px", textAlign: i >= 6 ? "right" : "left", color: MUTED2, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -428,7 +428,6 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
                         <td style={{ padding: "5px 8px", color: MUTED2, whiteSpace: "nowrap" }}>{(r.hora_creacion ?? "").slice(0,5)}</td>
                         <td style={{ padding: "5px 8px", color: TEXT2,  whiteSpace: "nowrap" }}>{r.no_orden ?? "—"}</td>
                         <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.local ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED2 }}>{r.poligono ?? "—"}</td>
                         <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.nombre_conductor ?? "—"}</td>
                         <td style={{ padding: "5px 8px", color: MUTED2 }}>{r.tipo_orden ?? "—"}</td>
                         <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: ok ? GREEN2 : RED2 }}>{isNaN(min) ? "—" : min}</td>
