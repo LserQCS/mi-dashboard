@@ -181,7 +181,15 @@ export default async function handler(req, res) {
   const conductores = safe(r_cond,   []);
   const brecha     = filterBrechaByCiudad(safe(r_brecha, []), ciudad);
   const locales    = safe(r_locales, []).map(r => r.local).filter(Boolean);
-  const pedidos    = safe(r_pedidos, []);
+  // BigQuery DATE/TIME columns return typed objects {value: "..."} — flatten to strings
+  const flatRow = (row) => {
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      out[k] = (v !== null && typeof v === "object" && "value" in v) ? v.value : v;
+    }
+    return out;
+  };
+  const pedidos    = safe(r_pedidos, []).map(flatRow);
 
   const errors = [];
   if (r_kpis.status    === "rejected") errors.push({ source: "kpis",      msg: r_kpis.reason?.message });

@@ -190,10 +190,6 @@ export default function Dashboard() {
 
   // ── Filtros del tareo (GSheets) ─────────────────────────────────────────────
   const [selSemanas,  setSelSemanas]  = useState(ALL_SEMANAS);
-  const [selFood,     setSelFood]     = useState("Todos");
-  const [selPedidos,  setSelPedidos]  = useState("Todos");
-  const [selPoligono, setSelPoligono] = useState("Todos");
-  const [selMarca,    setSelMarca]    = useState("Todos");
   const [selCiudad,   setSelCiudad]   = useState("Todos");
 
   const { prevDesde, prevHasta } = prevPeriod(applied.desde, applied.hasta);
@@ -219,20 +215,6 @@ export default function Dashboard() {
     return [...(tareo.data.food || []), ...(tareo.data.no_food || [])];
   }, [tareo.data]);
 
-  const allPoligonos = useMemo(() => {
-    const base = [...new Set(allRows.map((r) => r.poligono).filter(Boolean))].sort();
-    if (selCiudad === "Todos") return base;
-    const pols = CIUDAD_POLS[selCiudad];
-    if (pols) return base.filter((p) => pols.includes(p));
-    return base.filter((p) => !ALL_NON_LIMA_POLS.includes(p));
-  }, [allRows, selCiudad]);
-  const allMarcas    = useMemo(() => {
-    const base = [...new Set(allRows.map((r) => r.origen || r.marca).filter(Boolean))].sort();
-    if (selCiudad === "Todos") return base;
-    const clis = CIUDAD_CLIENTES[selCiudad];
-    if (clis) return base.filter((m) => clis.includes(m));
-    return base.filter((m) => !ALL_NON_LIMA_CLIENTES.includes(m));
-  }, [allRows, selCiudad]);
 
   const hasPedidos = (r) => {
     const p = r.poligono || "";
@@ -244,11 +226,6 @@ export default function Dashboard() {
     const filter = (r) => {
       const semNum = parseInt(r.semana, 10);
       if (!isNaN(semNum) && !selSemanas.includes(semNum)) return false;
-      if (selFood    !== "Todos" && r.categoria !== selFood) return false;
-      if (selPedidos !== "Todos") {
-        if (selPedidos === "Con Pedidos" && !hasPedidos(r)) return false;
-        if (selPedidos === "Sin Pedidos" &&  hasPedidos(r)) return false;
-      }
       // Filtro Ciudad: Food por polígono, No Food por marca/cliente
       if (selCiudad !== "Todos") {
         const cityPols = CIUDAD_POLS[selCiudad];
@@ -264,17 +241,12 @@ export default function Dashboard() {
           else { if (ALL_NON_LIMA_CLIENTES.includes(marca)) return false; }
         }
       }
-      if (selPoligono !== "Todos" && r.poligono !== selPoligono) return false;
-      if (selMarca    !== "Todos") {
-        const m = r.origen || r.marca || "";
-        if (m !== selMarca) return false;
-      }
       return true;
     };
     const food    = (tareo.data.food    || []).filter(filter);
     const no_food = (tareo.data.no_food || []).filter(filter);
     return { food, no_food, total: food.length + no_food.length };
-  }, [tareo.data, selSemanas, selFood, selPedidos, selPoligono, selMarca, selCiudad]);
+  }, [tareo.data, selSemanas, selCiudad]);
 
   const kd   = kpis.data    ?? {};
   const kp   = kpisPrev.data ?? {};
@@ -370,85 +342,41 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Filtros del Tareo (ambos tabs) ────────────────────────────────── */}
-        {(mainTab === "disponibilidad" || mainTab === "analisis") && (
-          <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", position: "sticky", top: 48, zIndex: 100 }}>
-            <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>{mainTab === "analisis" ? "Filtros" : "Filtros Tareo"}</span>
-            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Ciudad — aplica en ambos tabs */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Ciudad</span>
-              {["Todos", "Lima", "Arequipa", "Cuzco"].map((c) => (
-                <button key={c} onClick={() => { setSelCiudad(c); setSelPoligono("Todos"); setSelMarca("Todos"); }}
-                  style={{
-                    padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                    border: `1px solid ${selCiudad === c ? "var(--accent)" : "var(--border)"}`,
-                    background: selCiudad === c ? "rgba(59,130,246,0.18)" : "transparent",
-                    color: selCiudad === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                  }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Semanas — aplica en ambos tabs */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Semana</span>
-              {ALL_SEMANAS.map((s) => (
-                <button key={s} onClick={() => setSelSemanas((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s])}
-                  style={{
-                    padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                    border: `1px solid ${selSemanas.includes(s) ? "var(--accent)" : "var(--border)"}`,
-                    background: selSemanas.includes(s) ? "rgba(59,130,246,0.18)" : "transparent",
-                    color: selSemanas.includes(s) ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                  }}>
-                  S{s}
-                </button>
-              ))}
-            </div>
-            {/* Filtros solo del tab Disponibilidad */}
-            {mainTab === "disponibilidad" && <>
-              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Tipo</span>
-                {["Todos", "Food", "No Food"].map((c) => (
-                  <button key={c} onClick={() => setSelFood(c)}
-                    style={{
-                      padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                      border: `1px solid ${selFood === c ? "var(--accent)" : "var(--border)"}`,
-                      background: selFood === c ? "rgba(59,130,246,0.18)" : "transparent",
-                      color: selFood === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                    }}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Pedidos</span>
-                {["Todos", "Con Pedidos", "Sin Pedidos"].map((c) => (
-                  <button key={c} onClick={() => setSelPedidos(c)}
-                    style={{
-                      padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                      border: `1px solid ${selPedidos === c ? "var(--accent)" : "var(--border)"}`,
-                      background: selPedidos === c ? "rgba(59,130,246,0.18)" : "transparent",
-                      color: selPedidos === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                    }}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-              <Select label="Polígono" value={selPoligono} options={allPoligonos} onChange={setSelPoligono} />
-              <Select label="Marca/Origen" value={selMarca} options={allMarcas} onChange={setSelMarca} />
-            </>}
-            <button
-              onClick={() => { setSelSemanas(ALL_SEMANAS); setSelFood("Todos"); setSelPedidos("Todos"); setSelPoligono("Todos"); setSelMarca("Todos"); setSelCiudad("Todos"); }}
-              style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer" }}>
-              Limpiar
-            </button>
+        {/* ── Filtros ───────────────────────────────────────────────────────── */}
+        <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", position: "sticky", top: 48, zIndex: 100 }}>
+          <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Filtros</span>
+          <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Ciudad</span>
+            {["Todos", "Lima", "Arequipa", "Cuzco"].map((c) => (
+              <button key={c} onClick={() => setSelCiudad(c)}
+                style={{
+                  padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
+                  border: `1px solid ${selCiudad === c ? "var(--accent)" : "var(--border)"}`,
+                  background: selCiudad === c ? "rgba(59,130,246,0.18)" : "transparent",
+                  color: selCiudad === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
+                }}>{c}</button>
+            ))}
           </div>
-        )}
+          <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Semana</span>
+            {ALL_SEMANAS.map((s) => (
+              <button key={s} onClick={() => setSelSemanas((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s])}
+                style={{
+                  padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
+                  border: `1px solid ${selSemanas.includes(s) ? "var(--accent)" : "var(--border)"}`,
+                  background: selSemanas.includes(s) ? "rgba(59,130,246,0.18)" : "transparent",
+                  color: selSemanas.includes(s) ? "#93c5fd" : "var(--muted)", cursor: "pointer",
+                }}>S{s}</button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setSelSemanas(ALL_SEMANAS); setSelCiudad("Todos"); }}
+            style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer" }}>
+            Limpiar
+          </button>
+        </div>
 
         {/* ── Tab Análisis ──────────────────────────────────────────────────── */}
         {mainTab === "analisis" && (
