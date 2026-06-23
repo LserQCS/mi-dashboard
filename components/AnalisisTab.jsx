@@ -79,7 +79,7 @@ function EtapaRow({ label, avg, benchmark }) {
 
 const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
 
-export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas }) {
+export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selCiudad = "Todos" }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -89,12 +89,13 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas }) {
   useEffect(() => {
     if (!desde || !hasta) return;
     setLoading(true); setError(null);
-    fetch(`/api/Analisis?desde=${desde}&hasta=${hasta}`)
+    const ciudadQS = selCiudad !== "Todos" ? `&ciudad=${encodeURIComponent(selCiudad)}` : "";
+    fetch(`/api/Analisis?desde=${desde}&hasta=${hasta}${ciudadQS}`)
       .then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [desde, hasta]);
+  }, [desde, hasta, selCiudad]);
 
   if (loading) return <div style={{ textAlign: "center", padding: "3rem", color: MUTED }}>Cargando análisis…</div>;
   if (error)   return <div style={{ color: RED, padding: "1rem" }}>Error: {error}</div>;

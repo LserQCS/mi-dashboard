@@ -452,7 +452,7 @@ export default function Dashboard() {
 
         {/* ── Tab Análisis ──────────────────────────────────────────────────── */}
         {mainTab === "analisis" && (
-          <AnalisisTab desde={applied.desde} hasta={applied.hasta} selSemanas={selSemanas} />
+          <AnalisisTab desde={applied.desde} hasta={applied.hasta} selSemanas={selSemanas} selCiudad={selCiudad} />
         )}
 
         {/* ── Tab Disponibilidad ────────────────────────────────────────────── */}

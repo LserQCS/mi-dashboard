@@ -16,6 +16,40 @@ import {
   getTopConductores,
 } from "../../lib/bigquery";
 
+
+// ─── Filtro ciudad → BigQuery ────────────────────────────────────────────────
+const CIUDAD_BQ_POLS = {
+  Arequipa: ["Pol Cayma", "Pol Mariscal"],
+  Cuzco:    ["Pol Larapa", "Pol La Cultura", "Pol Alameda"],
+};
+const CIUDAD_SHEET_POLS = {
+  Arequipa: ["Pol Cayma", "Pol Mariscal"],
+  Cuzco:    ["Pol Larapa", "Pol La Cultura", "Pol Alameda"],
+};
+const ALL_NON_LIMA_BQ = ["Pol Cayma", "Pol Mariscal", "Pol Larapa", "Pol La Cultura", "Pol Alameda"];
+
+function buildExtraWhere(ciudad) {
+  if (!ciudad || ciudad === "Todos") return "";
+  const pols = CIUDAD_BQ_POLS[ciudad];
+  if (pols) {
+    const list = pols.map(p => `'${p}'`).join(", ");
+    return `AND TRIM(IFNULL(poligono,'')) IN (${list})`;
+  }
+  if (ciudad === "Lima") {
+    const list = ALL_NON_LIMA_BQ.map(p => `'${p}'`).join(", ");
+    return `AND (poligono IS NULL OR TRIM(poligono) NOT IN (${list}))`;
+  }
+  return "";
+}
+
+function filterBrechaByCiudad(rows, ciudad) {
+  if (!ciudad || ciudad === "Todos") return rows;
+  const pols = CIUDAD_SHEET_POLS[ciudad];
+  if (pols) return rows.filter(r => pols.includes(r.poligono));
+  if (ciudad === "Lima") return rows.filter(r => !ALL_NON_LIMA_BQ.includes(r.poligono));
+  return rows;
+}
+
 // ─── Google Sheets (misma hoja que ProgramacionCobertura) ────────────────────
 const SHEET_ID =
   "2PACX-1vT6SUp1hOvRaQ7n0YEKyyKMJFakDrCiFOoLqIiV8SbiUIJtiYrGaswSHXc_FLg7a3BnVCy1bp22t6k0";
@@ -114,13 +148,16 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const range = defaultRange(req.query.desde, req.query.hasta);
+  const ciudad = req.query.ciudad ?? "Todos";
+  const extraWhere = buildExtraWhere(ciudad);
+  const bqParams = { ...range, extraWhere };
 
   const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha] = await Promise.allSettled([
-    getKPIs(range),
-    getCumplimientoPorProveedor(range),
-    getKPIsPorPoligono(range),
-    getKPIsPorHora(range),
-    getTopConductores(range),
+    getKPIs(bqParams),
+    getCumplimientoPorProveedor(bqParams),
+    getKPIsPorPoligono(bqParams),
+    getKPIsPorHora(bqParams),
+    getTopConductores(bqParams),
     fetchBrecha(),
   ]);
 
@@ -131,7 +168,7 @@ export default async function handler(req, res) {
   const porPoligono = safe(r_pol,   []);
   const porHora    = safe(r_hora,   []);
   const conductores = safe(r_cond,  []);
-  const brecha     = safe(r_brecha, []);
+  const brecha     = filterBrechaByCiudad(safe(r_brecha, []), ciudad);
 
   const errors = [];
   if (r_kpis.status    === "rejected") errors.push({ source: "kpis",      msg: r_kpis.reason?.message });
