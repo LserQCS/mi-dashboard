@@ -189,6 +189,8 @@ export default async function handler(req, res) {
   if (r_hora.status    === "rejected") errors.push({ source: "hora",      msg: r_hora.reason?.message });
   if (r_cond.status    === "rejected") errors.push({ source: "conductor", msg: r_cond.reason?.message });
   if (r_brecha.status  === "rejected") errors.push({ source: "brecha",    msg: r_brecha.reason?.message });
+  if (r_pedidos.status === "rejected") errors.push({ source: "pedidos",   msg: r_pedidos.reason?.message });
+  if (r_locales.status === "rejected") errors.push({ source: "locales",   msg: r_locales.reason?.message });
 
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
   return res.status(200).json({ kpis, proveedor, porPoligono, porHora, conductores, brecha, locales, pedidos, range, errors });

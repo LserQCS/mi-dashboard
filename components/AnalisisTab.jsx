@@ -387,8 +387,8 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
       )}
 
       {/* ── Tabla de Pedidos ──────────────────────────────────────────────── */}
-      {(data.pedidos ?? []).length > 0 && (() => {
-        const pedidos = data.pedidos;
+      {(() => {
+        const pedidos = data.pedidos ?? [];
         const GREEN2 = "#22c55e", RED2 = "#ef4444", MUTED2 = "#94a3b8", TEXT2 = "#f1f5f9";
         const u = (v, thr) => {
           const n = Number(v);
@@ -401,7 +401,15 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
               <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: TEXT2 }}>📋 Registros de Pedidos</h3>
               <span style={{ color: MUTED2, fontSize: "0.7rem" }}>{pedidos.length.toLocaleString()} registros</span>
             </div>
-            <div style={{ maxHeight: 420, overflowY: "auto" }}>
+            {pedidos.length === 0 && (
+              <div style={{ color: "#94a3b8", fontSize: "0.8rem", padding: "1rem 0" }}>
+                Sin datos en el período seleccionado.{" "}
+                {(data.errors ?? []).filter(e => e.source === "pedidos").map(e => (
+                  <span key={e.source} style={{ color: "#ef4444" }}>Error: {e.msg}</span>
+                ))}
+              </div>
+            )}
+            <div style={{ maxHeight: 420, overflowY: "auto", display: pedidos.length === 0 ? "none" : undefined }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
                 <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 1 }}>
                   <tr style={{ borderBottom: "1px solid #334155" }}>
