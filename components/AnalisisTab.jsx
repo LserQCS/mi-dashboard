@@ -79,6 +79,63 @@ function EtapaRow({ label, avg, benchmark }) {
 
 const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
 
+
+// ─── Tabla detalle de pedidos ─────────────────────────────────────────────────
+function PedidosTable({ pedidos }) {
+  const G = "#22c55e", R = "#ef4444", M = "#94a3b8", T = "#f1f5f9", BRD = "#334155";
+  const fmt = (v, thr) => {
+    const n = parseFloat(v);
+    if (v == null || isNaN(n)) return <span style={{color:M}}>—</span>;
+    return <span style={{color: n > thr ? R : M}}>{n}</span>;
+  };
+  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","Prep","Asig","Viaje","Rep"];
+  return (
+    <div style={{background:"#1e293b",border:"1px solid "+BRD,borderRadius:12,padding:"1.25rem 1.5rem",marginTop:"1rem",overflowX:"auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem"}}>
+        <span style={{color:T,fontWeight:700,fontSize:"0.95rem"}}>📋 Detalle de Pedidos</span>
+        <span style={{color:M,fontSize:"0.7rem"}}>{pedidos.length.toLocaleString()} registros</span>
+      </div>
+      {pedidos.length === 0
+        ? <p style={{color:M,fontSize:"0.8rem",margin:0}}>Sin registros para el período y filtros seleccionados.</p>
+        : (
+          <div style={{maxHeight:420,overflowY:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.73rem"}}>
+              <thead style={{position:"sticky",top:0,background:"#1e293b",zIndex:1}}>
+                <tr style={{borderBottom:"1px solid "+BRD}}>
+                  {hdrs.map((h,i)=>(
+                    <th key={h} style={{padding:"6px 8px",textAlign:i>=6?"right":"left",color:M,fontWeight:500,whiteSpace:"nowrap"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pedidos.map((r,i)=>{
+                  const min = parseFloat(r.min_entrega);
+                  const ok  = r.cumplimiento === "ok";
+                  return (
+                    <tr key={i} style={{borderBottom:"1px solid "+BRD,background:i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
+                      <td style={{padding:"5px 8px",color:M,whiteSpace:"nowrap"}}>{r.fecha_creacion ?? "—"}</td>
+                      <td style={{padding:"5px 8px",color:M,whiteSpace:"nowrap"}}>{String(r.hora_creacion ?? "").slice(0,5)}</td>
+                      <td style={{padding:"5px 8px",color:T,whiteSpace:"nowrap"}}>{r.no_orden ?? "—"}</td>
+                      <td style={{padding:"5px 8px",color:T}}>{r.local ?? "—"}</td>
+                      <td style={{padding:"5px 8px",color:T}}>{r.nombre_conductor ?? "—"}</td>
+                      <td style={{padding:"5px 8px",color:M}}>{r.tipo_orden ?? "—"}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right",fontWeight:700,color:ok?G:R}}>{isNaN(min)?"—":min}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_prep,25)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_asignacion,5)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_viaje,10)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_reparto,12)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
 export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selCiudad = "Todos" }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
@@ -386,64 +443,8 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         </div>
       )}
 
-      {/* ── Tabla de Pedidos ──────────────────────────────────────────────── */}
-      {(() => {
-        const pedidos = data.pedidos ?? [];
-        const GREEN2 = "#22c55e", RED2 = "#ef4444", MUTED2 = "#94a3b8", TEXT2 = "#f1f5f9";
-        const u = (v, thr) => {
-          const n = Number(v);
-          if (v == null || isNaN(n)) return <span style={{ color: MUTED2 }}>—</span>;
-          return <span style={{ color: n > thr ? RED2 : MUTED2 }}>{n}</span>;
-        };
-        return (
-          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: "1.25rem 1.5rem", marginTop: "1rem", overflowX: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: TEXT2 }}>📋 Registros de Pedidos</h3>
-              <span style={{ color: MUTED2, fontSize: "0.7rem" }}>{pedidos.length.toLocaleString()} registros</span>
-            </div>
-            {pedidos.length === 0 && (
-              <div style={{ color: "#94a3b8", fontSize: "0.8rem", padding: "1rem 0" }}>
-                Sin datos en el período seleccionado.{" "}
-                {(data.errors ?? []).filter(e => e.source === "pedidos").map(e => (
-                  <span key={e.source} style={{ color: "#ef4444" }}>Error: {e.msg}</span>
-                ))}
-              </div>
-            )}
-            <div style={{ maxHeight: 420, overflowY: "auto", display: pedidos.length === 0 ? "none" : undefined }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
-                <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 1 }}>
-                  <tr style={{ borderBottom: "1px solid #334155" }}>
-                    {["Fecha","Hora","# Orden","Local","Driver","Tipo","Total min","Prep","Asig","Viaje","Reparto"].map((h,i) => (
-                      <th key={h} style={{ padding: "6px 8px", textAlign: i >= 6 ? "right" : "left", color: MUTED2, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pedidos.map((r, i) => {
-                    const min = Number(r.min_entrega);
-                    const ok  = r.cumplimiento === "ok";
-                    return (
-                      <tr key={i} style={{ borderBottom: "1px solid #334155", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                        <td style={{ padding: "5px 8px", color: MUTED2, whiteSpace: "nowrap" }}>{r.fecha_creacion}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED2, whiteSpace: "nowrap" }}>{(r.hora_creacion ?? "").slice(0,5)}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT2,  whiteSpace: "nowrap" }}>{r.no_orden ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.local ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.nombre_conductor ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED2 }}>{r.tipo_orden ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: ok ? GREEN2 : RED2 }}>{isNaN(min) ? "—" : min}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_prep, 25)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_asignacion, 5)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_viaje, 10)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_reparto, 12)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
+      {/* ── Detalle de Pedidos ─────────────────────────────────────────────── */}
+      <PedidosTable pedidos={data.pedidos ?? []} />
 
     </div>
   );
