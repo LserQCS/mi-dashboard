@@ -84,22 +84,30 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const selSemanas = extSemanas ?? ALL_SEMANAS_BRECHA;
-  const [showCond, setShowCond]     = useState(false);
+  const [showCond, setShowCond] = useState(false);
+  const [selLocal, setSelLocal] = useState("Todos");
+
+  // Reset local cuando cambia ciudad
+  useEffect(() => { setSelLocal("Todos"); }, [selCiudad]);
 
   useEffect(() => {
     if (!desde || !hasta) return;
     setLoading(true); setError(null);
-    const ciudadQS = selCiudad !== "Todos" ? `&ciudad=${encodeURIComponent(selCiudad)}` : "";
-    fetch(`/api/Analisis?desde=${desde}&hasta=${hasta}${ciudadQS}`)
+    const qs = new URLSearchParams({ desde, hasta });
+    if (selCiudad !== "Todos") qs.set("ciudad", selCiudad);
+    if (selLocal  !== "Todos") qs.set("local",  selLocal);
+    fetch(`/api/Analisis?${qs.toString()}`)
       .then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [desde, hasta, selCiudad]);
+  }, [desde, hasta, selCiudad, selLocal]);
 
   if (loading) return <div style={{ textAlign: "center", padding: "3rem", color: MUTED }}>Cargando análisis…</div>;
   if (error)   return <div style={{ color: RED, padding: "1rem" }}>Error: {error}</div>;
   if (!data)   return null;
+
+  const locales = [...new Set((data.proveedor ?? []).map(r => r.proveedor).filter(Boolean))].sort();
 
   const k           = data.kpis ?? {};
   const totalPed    = Number(k.total_pedidos) || 0;
@@ -147,6 +155,25 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
 
   return (
     <div style={{ paddingTop: "1rem" }}>
+
+      {/* ── Filtro Local ──────────────────────────────────────────────────── */}
+      {locales.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
+          <span style={{ color: MUTED, fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Local</span>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["Todos", ...locales].map((loc) => (
+              <button key={loc} onClick={() => setSelLocal(loc)} style={{
+                padding: "4px 12px", borderRadius: 16,
+                border: selLocal === loc ? "1px solid #3b82f6" : "1px solid #334155",
+                background: selLocal === loc ? "rgba(59,130,246,0.18)" : "transparent",
+                color: selLocal === loc ? "#93c5fd" : MUTED,
+                fontSize: "0.73rem", fontWeight: selLocal === loc ? 600 : 400,
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}>{loc}</button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div style={{ display: "flex", gap: 10, marginBottom: "1rem", flexWrap: "wrap" }}>

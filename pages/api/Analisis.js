@@ -149,15 +149,22 @@ export default async function handler(req, res) {
 
   const range = defaultRange(req.query.desde, req.query.hasta);
   const ciudad = req.query.ciudad ?? "Todos";
-  const extraWhere = buildExtraWhere(ciudad);
-  const bqParams = { ...range, extraWhere };
+  const local  = req.query.local  ?? "Todos";
+
+  const extraWhereCity = buildExtraWhere(ciudad);
+  const localWhere = (local && local !== "Todos")
+    ? `AND TRIM(IFNULL(proveedor,'')) = '${local.replace(/'/g, "\\'")}'`
+    : "";
+  const extraWhere = [extraWhereCity, localWhere].filter(Boolean).join("\n      ");
+  const bqFull = { ...range, extraWhere };
+  const bqCity = { ...range, extraWhere: extraWhereCity }; // lista proveedores sin filtro local
 
   const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha] = await Promise.allSettled([
-    getKPIs(bqParams),
-    getCumplimientoPorProveedor(bqParams),
-    getKPIsPorPoligono(bqParams),
-    getKPIsPorHora(bqParams),
-    getTopConductores(bqParams),
+    getKPIs(bqFull),
+    getCumplimientoPorProveedor(bqCity),   // siempre lista completa por ciudad
+    getKPIsPorPoligono(bqFull),
+    getKPIsPorHora(bqFull),
+    getTopConductores(bqFull),
     fetchBrecha(),
   ]);
 
