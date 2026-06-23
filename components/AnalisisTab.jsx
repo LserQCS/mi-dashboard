@@ -101,7 +101,7 @@ function PedidosTable({ pedidos }) {
     const match = s.match(/[T ](\d{2}:\d{2})/);
     return <span style={{color:"#64748b",fontSize:"0.65rem"}}>{match ? match[1] : s.slice(0,5)}</span>;
   };
-  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","Prep","TS Pickup","Asig","TS Rec","Viaje","TS Ent","Rep","TS Fin"];
+  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","TS Asig2","Prep","TS Pickup","Asig","TS Rec","Viaje","TS Ent","Rep","TS Fin"];
   return (
     <div style={{background:"#1e293b",border:"1px solid "+BRD,borderRadius:12,padding:"1.25rem 1.5rem",marginTop:"1rem",overflowX:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem",flexWrap:"wrap",gap:8}}>
@@ -150,6 +150,7 @@ function PedidosTable({ pedidos }) {
                       <td style={{padding:"5px 8px",color:M}}>{r.tipo_orden ?? "—"}</td>
                       <td style={{padding:"5px 8px",textAlign:"right",fontWeight:700,color:ok?G:R}}>{isNaN(min)?"—":min}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_asignando)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right",background:"rgba(234,179,8,0.1)"}}>{tsHM(r.ts_asignado_raw)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_prep,25)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_pickup)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_asignacion,5)}</td>
