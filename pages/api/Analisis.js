@@ -14,6 +14,7 @@ import {
   getKPIsPorPoligono,
   getKPIsPorHora,
   getTopConductores,
+  getLocales,
 } from "../../lib/bigquery";
 
 
@@ -153,29 +154,31 @@ export default async function handler(req, res) {
 
   const extraWhereCity = buildExtraWhere(ciudad);
   const localWhere = (local && local !== "Todos")
-    ? `AND TRIM(IFNULL(proveedor,'')) = '${local.replace(/'/g, "\\'")}'`
+    ? `AND TRIM(IFNULL(\`local\`,'')) = '${local.replace(/'/g, "\\'")}'`
     : "";
   const extraWhere = [extraWhereCity, localWhere].filter(Boolean).join("\n      ");
   const bqFull = { ...range, extraWhere };
   const bqCity = { ...range, extraWhere: extraWhereCity }; // lista proveedores sin filtro local
 
-  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha] = await Promise.allSettled([
+  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha, r_locales] = await Promise.allSettled([
     getKPIs(bqFull),
-    getCumplimientoPorProveedor(bqCity),   // siempre lista completa por ciudad
+    getCumplimientoPorProveedor(bqCity),
     getKPIsPorPoligono(bqFull),
     getKPIsPorHora(bqFull),
     getTopConductores(bqFull),
     fetchBrecha(),
+    getLocales(bqCity),   // lista de locales filtrada solo por ciudad
   ]);
 
   const safe = (r, fallback) => r.status === "fulfilled" ? r.value : fallback;
 
-  const kpis       = safe(r_kpis,   {});
-  const proveedor  = safe(r_prov,   []);
+  const kpis       = safe(r_kpis,    {});
+  const proveedor  = safe(r_prov,    []);
   const porPoligono = safe(r_pol,   []);
-  const porHora    = safe(r_hora,   []);
-  const conductores = safe(r_cond,  []);
+  const porHora    = safe(r_hora,    []);
+  const conductores = safe(r_cond,   []);
   const brecha     = filterBrechaByCiudad(safe(r_brecha, []), ciudad);
+  const locales    = safe(r_locales, []).map(r => r.local).filter(Boolean);
 
   const errors = [];
   if (r_kpis.status    === "rejected") errors.push({ source: "kpis",      msg: r_kpis.reason?.message });
@@ -185,5 +188,5 @@ export default async function handler(req, res) {
   if (r_brecha.status  === "rejected") errors.push({ source: "brecha",    msg: r_brecha.reason?.message });
 
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
-  return res.status(200).json({ kpis, proveedor, porPoligono, porHora, conductores, brecha, range, errors });
+  return res.status(200).json({ kpis, proveedor, porPoligono, porHora, conductores, brecha, locales, range, errors });
 }

@@ -107,7 +107,7 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   if (error)   return <div style={{ color: RED, padding: "1rem" }}>Error: {error}</div>;
   if (!data)   return null;
 
-  const locales = [...new Set((data.proveedor ?? []).map(r => r.proveedor).filter(Boolean))].sort();
+  const locales = data.locales ?? [];
 
   const k           = data.kpis ?? {};
   const totalPed    = Number(k.total_pedidos) || 0;
