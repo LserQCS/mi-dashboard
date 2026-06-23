@@ -9,6 +9,30 @@ import {
   getPedidos, getTrend, getSchema, listDatasets, listTables, searchTable,
 } from "../../lib/bigquery";
 
+
+// ── Filtro por ciudad ──────────────────────────────────────────────────────────
+const CIUDAD_BQ_POLS = {
+  Arequipa: ["Pol Cayma", "Pol Mariscal"],
+  Cuzco:    ["Pol Larapa", "Pol La Cultura", "Pol Alameda"],
+};
+const ALL_NON_LIMA_BQ = [
+  "Pol Cayma", "Pol Mariscal", "Pol Larapa", "Pol La Cultura", "Pol Alameda"
+];
+
+function buildExtraWhere(ciudad) {
+  if (!ciudad || ciudad === "Todos") return "";
+  const pols = CIUDAD_BQ_POLS[ciudad];
+  if (pols) {
+    const list = pols.map(p => `'${p}'`).join(", ");
+    return `AND TRIM(IFNULL(poligono,'')) IN (${list})`;
+  }
+  if (ciudad === "Lima") {
+    const list = ALL_NON_LIMA_BQ.map(p => `'${p}'`).join(", ");
+    return `AND (poligono IS NULL OR TRIM(poligono) NOT IN (${list}))`;
+  }
+  return "";
+}
+
 // Devuelve la fecha de hoy en YYYY-MM-DD (zona Perú UTC-5)
 function hoy() {
   return new Date(Date.now() - 5 * 3600_000).toISOString().slice(0, 10);
@@ -27,20 +51,22 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const view  = req.query.view ?? "kpis";
-    const range = defaultRange(req.query.desde, req.query.hasta);
+    const view       = req.query.view ?? "kpis";
+    const range      = defaultRange(req.query.desde, req.query.hasta);
+    const ciudad     = req.query.ciudad || "Todos";
+    const extraWhere = buildExtraWhere(ciudad);
     let data;
 
     switch (view) {
-      case "proveedor":  data = await getCumplimientoPorProveedor(range); break;
+      case "proveedor":  data = await getCumplimientoPorProveedor({ ...range, extraWhere }); break;
       case "tipo":       data = await getCumplimientoPorTipo(range);      break;
       case "detalle":    data = await getPedidos(range);                  break;
-      case "tendencia":  data = await getTrend(range);                    break;
+      case "tendencia":  data = await getTrend({ ...range, extraWhere });                    break;
       case "schema":    data = await getSchema();                        break;
       case "datasets":  data = await listDatasets();                     break;
       case "tables":    data = await listTables(req.query.ds || "shared_views"); break;
       case "search":    data = await searchTable(req.query.q || "liquidacion"); break;
-      default:          data = await getKPIs(range);
+      default:          data = await getKPIs({ ...range, extraWhere });
     }
 
     res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=60");

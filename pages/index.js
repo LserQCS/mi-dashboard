@@ -154,6 +154,19 @@ const QUICK_FILTERS = [
 
 const ALL_SEMANAS = [21, 22, 23, 24];
 
+const CIUDAD_POLS = {
+  Arequipa: ["Pol Cayma", "Pol Mariscal"],
+  Cuzco:    ["Pol Larapa", "Pol La Cultura", "Pol Alameda"],
+};
+const CIUDAD_CLIENTES = {
+  Arequipa: ["Pollo Real", "Tablón AQP"],
+  Cuzco:    ["Tablón CSC"],
+};
+const ALL_NON_LIMA_POLS     = ["Pol Cayma", "Pol Mariscal", "Pol Larapa", "Pol La Cultura", "Pol Alameda"];
+const ALL_NON_LIMA_CLIENTES = ["Pollo Real", "Tablón AQP", "Tablón CSC"];
+
+
+
 function Select({ label, value, options, onChange }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -181,19 +194,21 @@ export default function Dashboard() {
   const [selPedidos,  setSelPedidos]  = useState("Todos");
   const [selPoligono, setSelPoligono] = useState("Todos");
   const [selMarca,    setSelMarca]    = useState("Todos");
+  const [selCiudad,   setSelCiudad]   = useState("Todos");
 
   const { prevDesde, prevHasta } = prevPeriod(applied.desde, applied.hasta);
-  const qs     = `desde=${applied.desde}&hasta=${applied.hasta}`;
-  const qsPrev = `desde=${prevDesde}&hasta=${prevHasta}`;
+  const qs       = `desde=${applied.desde}&hasta=${applied.hasta}`;
+  const qsPrev   = `desde=${prevDesde}&hasta=${prevHasta}`;
+  const ciudadQS  = selCiudad !== "Todos" ? `&ciudad=${encodeURIComponent(selCiudad)}` : "";
 
   // Período actual
-  const kpis      = useFetch(`/api/BigQueryLogistic?view=kpis&${qs}`);
-  const tendencia = useFetch(`/api/BigQueryLogistic?view=tendencia&${qs}`);
-  const proveedor = useFetch(`/api/BigQueryLogistic?view=proveedor&${qs}`);
+  const kpis      = useFetch(`/api/BigQueryLogistic?view=kpis&${qs}${ciudadQS}`);
+  const tendencia = useFetch(`/api/BigQueryLogistic?view=tendencia&${qs}${ciudadQS}`);
+  const proveedor = useFetch(`/api/BigQueryLogistic?view=proveedor&${qs}${ciudadQS}`);
   const tareo     = useFetch(`/api/ProgramacionFoodNoFood?${qs}`);
 
   // Período anterior (para variaciones)
-  const kpisPrev  = useFetch(`/api/BigQueryLogistic?view=kpis&${qsPrev}`);
+  const kpisPrev  = useFetch(`/api/BigQueryLogistic?view=kpis&${qsPrev}${ciudadQS}`);
 
   const apply = () => setApplied({ desde, hasta });
   const reload = () => { kpis.reload(); tendencia.reload(); proveedor.reload(); tareo.reload(); kpisPrev.reload(); };
@@ -204,8 +219,20 @@ export default function Dashboard() {
     return [...(tareo.data.food || []), ...(tareo.data.no_food || [])];
   }, [tareo.data]);
 
-  const allPoligonos = useMemo(() => [...new Set(allRows.map((r) => r.poligono).filter(Boolean))].sort(), [allRows]);
-  const allMarcas    = useMemo(() => [...new Set(allRows.map((r) => r.origen || r.marca).filter(Boolean))].sort(), [allRows]);
+  const allPoligonos = useMemo(() => {
+    const base = [...new Set(allRows.map((r) => r.poligono).filter(Boolean))].sort();
+    if (selCiudad === "Todos") return base;
+    const pols = CIUDAD_POLS[selCiudad];
+    if (pols) return base.filter((p) => pols.includes(p));
+    return base.filter((p) => !ALL_NON_LIMA_POLS.includes(p));
+  }, [allRows, selCiudad]);
+  const allMarcas    = useMemo(() => {
+    const base = [...new Set(allRows.map((r) => r.origen || r.marca).filter(Boolean))].sort();
+    if (selCiudad === "Todos") return base;
+    const clis = CIUDAD_CLIENTES[selCiudad];
+    if (clis) return base.filter((m) => clis.includes(m));
+    return base.filter((m) => !ALL_NON_LIMA_CLIENTES.includes(m));
+  }, [allRows, selCiudad]);
 
   const hasPedidos = (r) => {
     const p = r.poligono || "";
@@ -222,6 +249,21 @@ export default function Dashboard() {
         if (selPedidos === "Con Pedidos" && !hasPedidos(r)) return false;
         if (selPedidos === "Sin Pedidos" &&  hasPedidos(r)) return false;
       }
+      // Filtro Ciudad: Food por polígono, No Food por marca/cliente
+      if (selCiudad !== "Todos") {
+        const cityPols = CIUDAD_POLS[selCiudad];
+        const cityClis = CIUDAD_CLIENTES[selCiudad];
+        if (r.categoria === "Food" || !r.marca) {
+          // Food → filtrar por polígono
+          if (cityPols) { if (!cityPols.includes(r.poligono)) return false; }
+          else { if (ALL_NON_LIMA_POLS.includes(r.poligono)) return false; }
+        } else {
+          // No Food → filtrar por marca/cliente
+          const marca = r.origen || r.marca || "";
+          if (cityClis) { if (!cityClis.includes(marca)) return false; }
+          else { if (ALL_NON_LIMA_CLIENTES.includes(marca)) return false; }
+        }
+      }
       if (selPoligono !== "Todos" && r.poligono !== selPoligono) return false;
       if (selMarca    !== "Todos") {
         const m = r.origen || r.marca || "";
@@ -232,7 +274,7 @@ export default function Dashboard() {
     const food    = (tareo.data.food    || []).filter(filter);
     const no_food = (tareo.data.no_food || []).filter(filter);
     return { food, no_food, total: food.length + no_food.length };
-  }, [tareo.data, selSemanas, selFood, selPedidos, selPoligono, selMarca]);
+  }, [tareo.data, selSemanas, selFood, selPedidos, selPoligono, selMarca, selCiudad]);
 
   const kd   = kpis.data    ?? {};
   const kp   = kpisPrev.data ?? {};
@@ -333,6 +375,22 @@ export default function Dashboard() {
           <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", position: "sticky", top: 48, zIndex: 100 }}>
             <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Filtros Tareo</span>
             <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+            {/* Ciudad */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Ciudad</span>
+              {["Todos", "Lima", "Arequipa", "Cuzco"].map((c) => (
+                <button key={c} onClick={() => { setSelCiudad(c); setSelPoligono("Todos"); setSelMarca("Todos"); }}
+                  style={{
+                    padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
+                    border: `1px solid ${selCiudad === c ? "var(--accent)" : "var(--border)"}`,
+                    background: selCiudad === c ? "rgba(59,130,246,0.18)" : "transparent",
+                    color: selCiudad === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
+                  }}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
             {/* Semanas */}
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Semana</span>
@@ -385,7 +443,7 @@ export default function Dashboard() {
             <Select label="Polígono" value={selPoligono} options={allPoligonos} onChange={setSelPoligono} />
             <Select label="Marca/Origen" value={selMarca} options={allMarcas} onChange={setSelMarca} />
             <button
-              onClick={() => { setSelSemanas(ALL_SEMANAS); setSelFood("Todos"); setSelPedidos("Todos"); setSelPoligono("Todos"); setSelMarca("Todos"); }}
+              onClick={() => { setSelSemanas(ALL_SEMANAS); setSelFood("Todos"); setSelPedidos("Todos"); setSelPoligono("Todos"); setSelMarca("Todos"); setSelCiudad("Todos"); }}
               style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer" }}>
               Limpiar
             </button>
