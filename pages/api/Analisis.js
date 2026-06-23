@@ -15,6 +15,7 @@ import {
   getKPIsPorHora,
   getTopConductores,
   getLocales,
+  getPedidos,
 } from "../../lib/bigquery";
 
 
@@ -160,14 +161,15 @@ export default async function handler(req, res) {
   const bqFull = { ...range, extraWhere };
   const bqCity = { ...range, extraWhere: extraWhereCity }; // lista proveedores sin filtro local
 
-  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha, r_locales] = await Promise.allSettled([
+  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_brecha, r_locales, r_pedidos] = await Promise.allSettled([
     getKPIs(bqFull),
     getCumplimientoPorProveedor(bqCity),
     getKPIsPorPoligono(bqFull),
     getKPIsPorHora(bqFull),
     getTopConductores(bqFull),
     fetchBrecha(),
-    getLocales(bqCity),   // lista de locales filtrada solo por ciudad
+    getLocales(bqCity),
+    getPedidos(bqFull),
   ]);
 
   const safe = (r, fallback) => r.status === "fulfilled" ? r.value : fallback;
@@ -179,6 +181,7 @@ export default async function handler(req, res) {
   const conductores = safe(r_cond,   []);
   const brecha     = filterBrechaByCiudad(safe(r_brecha, []), ciudad);
   const locales    = safe(r_locales, []).map(r => r.local).filter(Boolean);
+  const pedidos    = safe(r_pedidos, []);
 
   const errors = [];
   if (r_kpis.status    === "rejected") errors.push({ source: "kpis",      msg: r_kpis.reason?.message });
@@ -188,5 +191,5 @@ export default async function handler(req, res) {
   if (r_brecha.status  === "rejected") errors.push({ source: "brecha",    msg: r_brecha.reason?.message });
 
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
-  return res.status(200).json({ kpis, proveedor, porPoligono, porHora, conductores, brecha, locales, range, errors });
+  return res.status(200).json({ kpis, proveedor, porPoligono, porHora, conductores, brecha, locales, pedidos, range, errors });
 }
