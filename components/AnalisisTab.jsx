@@ -82,7 +82,13 @@ const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
 
 // ─── Tabla detalle de pedidos ─────────────────────────────────────────────────
 function PedidosTable({ pedidos }) {
+  const [filtro, setFiltro] = useState("Todos");
   const G = "#22c55e", R = "#ef4444", M = "#94a3b8", T = "#f1f5f9", BRD = "#334155";
+  const pedidosFilt = filtro === "Cumplieron"
+    ? pedidos.filter((r) => r.cumplimiento === "ok")
+    : filtro === "Tarde"
+    ? pedidos.filter((r) => r.cumplimiento !== "ok")
+    : pedidos;
   const fmt = (v, thr) => {
     const n = parseFloat(v);
     if (v == null || isNaN(n)) return <span style={{color:M}}>—</span>;
@@ -98,11 +104,27 @@ function PedidosTable({ pedidos }) {
   const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","Prep","TS Pickup","Asig","TS Rec","Viaje","TS Ent","Rep","TS Fin"];
   return (
     <div style={{background:"#1e293b",border:"1px solid "+BRD,borderRadius:12,padding:"1.25rem 1.5rem",marginTop:"1rem",overflowX:"auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem",flexWrap:"wrap",gap:8}}>
         <span style={{color:T,fontWeight:700,fontSize:"0.95rem"}}>📋 Detalle de Pedidos</span>
-        <span style={{color:M,fontSize:"0.7rem"}}>{pedidos.length.toLocaleString()} registros</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {["Todos","Cumplieron","Tarde"].map((f) => (
+            <button key={f} onClick={() => setFiltro(f)} style={{
+              padding:"3px 12px", borderRadius:16, fontSize:"0.7rem", cursor:"pointer",
+              border: filtro === f
+                ? `1px solid ${f==="Cumplieron"?"#22c55e":f==="Tarde"?"#ef4444":"#3b82f6"}`
+                : "1px solid #334155",
+              background: filtro === f
+                ? f==="Cumplieron"?"rgba(34,197,94,0.15)":f==="Tarde"?"rgba(239,68,68,0.15)":"rgba(59,130,246,0.15)"
+                : "transparent",
+              color: filtro === f
+                ? f==="Cumplieron"?"#4ade80":f==="Tarde"?"#f87171":"#93c5fd"
+                : "#94a3b8",
+            }}>{f}</button>
+          ))}
+          <span style={{color:M,fontSize:"0.7rem",marginLeft:4}}>{pedidosFilt.length.toLocaleString()} de {pedidos.length.toLocaleString()}</span>
+        </div>
       </div>
-      {pedidos.length === 0
+      {pedidosFilt.length === 0
         ? <p style={{color:M,fontSize:"0.8rem",margin:0}}>Sin registros para el período y filtros seleccionados.</p>
         : (
           <div style={{maxHeight:420,overflowY:"auto"}}>
@@ -115,7 +137,7 @@ function PedidosTable({ pedidos }) {
                 </tr>
               </thead>
               <tbody>
-                {pedidos.map((r,i)=>{
+                {pedidosFilt.map((r,i)=>{
                   const min = parseFloat(r.min_entrega);
                   const ok  = r.cumplimiento === "ok";
                   return (
@@ -349,6 +371,9 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         </div>
       )}
 
+
+      {/* ── Detalle de Pedidos ─────────────────────────────────────────────── */}
+      <PedidosTable pedidos={data.pedidos ?? []} />
       {/* Brecha de turnos */}
       <div style={{ ...card, marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: 8 }}>
@@ -457,9 +482,6 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           </table>
         </div>
       )}
-
-      {/* ── Detalle de Pedidos ─────────────────────────────────────────────── */}
-      <PedidosTable pedidos={data.pedidos ?? []} />
 
     </div>
   );
