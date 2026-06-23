@@ -27,75 +27,6 @@ function Bar({ pct: p, color = BLUE, height = 8 }) {
   return (
     <div style={{ background: "#334155", borderRadius: 99, overflow: "hidden", height }}>
       <div style={{ width: `${Math.min(100, Math.max(0, p))}%`, height, background: color, borderRadius: 99, transition: "width 0.4s" }} />
-      {/* ── Tabla de Pedidos ──────────────────────────────────────────── */}
-      {(() => {
-        const pedidos = data.pedidos ?? [];
-        if (pedidos.length === 0) return null;
-        const cols = [
-          { h: "Fecha",       k: "fecha_creacion",  align: "left"  },
-          { h: "Hora",        k: "hora_creacion",   align: "left"  },
-          { h: "# Orden",     k: "no_orden",        align: "left"  },
-          { h: "Local",       k: "local",           align: "left"  },
-          { h: "Polígono",    k: "poligono",        align: "left"  },
-          { h: "Driver",      k: "nombre_conductor",align: "left"  },
-          { h: "Tipo",        k: "tipo_orden",      align: "left"  },
-          { h: "Total min",   k: "min_entrega",     align: "right" },
-          { h: "Prep",        k: "min_prep",        align: "right" },
-          { h: "Asig",        k: "min_asignacion",  align: "right" },
-          { h: "Viaje",       k: "min_viaje",       align: "right" },
-          { h: "Reparto",     k: "min_reparto",     align: "right" },
-        ];
-        return (
-          <div style={{ ...card, marginTop: "1rem", overflowX: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>📋 Registros de Pedidos</h3>
-              <span style={{ color: MUTED, fontSize: "0.7rem" }}>{pedidos.length.toLocaleString()} registros</span>
-            </div>
-            <div style={{ maxHeight: 420, overflowY: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
-                <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 1 }}>
-                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                    {cols.map(c => (
-                      <th key={c.k} style={{ padding: "6px 8px", textAlign: c.align, color: MUTED, fontWeight: 500, whiteSpace: "nowrap" }}>{c.h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pedidos.map((r, i) => {
-                    const min = Number(r.min_entrega);
-                    const ok  = r.cumplimiento === "ok";
-                    const minColor = ok ? GREEN : RED;
-                    const u = (v, thr) => {
-                      const n = Number(v);
-                      if (isNaN(n) || v == null) return <span style={{ color: MUTED }}>—</span>;
-                      return <span style={{ color: n > thr ? RED : MUTED }}>{n}</span>;
-                    };
-                    return (
-                      <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                        <td style={{ padding: "5px 8px", color: MUTED, whiteSpace: "nowrap" }}>{r.fecha_creacion}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED, whiteSpace: "nowrap" }}>{(r.hora_creacion ?? "").slice(0,5)}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT,  whiteSpace: "nowrap" }}>{r.no_orden ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT  }}>{r.local ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED }}>{r.poligono ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: TEXT  }}>{r.nombre_conductor ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", color: MUTED }}>{r.tipo_orden ?? "—"}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700 }}>
-                          <span style={{ color: minColor }}>{isNaN(min) || min == null ? "—" : min}</span>
-                        </td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_prep,       25)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_asignacion,  5)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_viaje,      10)}</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_reparto,    12)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
-
     </div>
   );
 }
@@ -454,6 +385,58 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           </table>
         </div>
       )}
+
+      {/* ── Tabla de Pedidos ──────────────────────────────────────────────── */}
+      {(data.pedidos ?? []).length > 0 && (() => {
+        const pedidos = data.pedidos;
+        const GREEN2 = "#22c55e", RED2 = "#ef4444", MUTED2 = "#94a3b8", TEXT2 = "#f1f5f9";
+        const u = (v, thr) => {
+          const n = Number(v);
+          if (v == null || isNaN(n)) return <span style={{ color: MUTED2 }}>—</span>;
+          return <span style={{ color: n > thr ? RED2 : MUTED2 }}>{n}</span>;
+        };
+        return (
+          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: "1.25rem 1.5rem", marginTop: "1rem", overflowX: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: TEXT2 }}>📋 Registros de Pedidos</h3>
+              <span style={{ color: MUTED2, fontSize: "0.7rem" }}>{pedidos.length.toLocaleString()} registros</span>
+            </div>
+            <div style={{ maxHeight: 420, overflowY: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
+                <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 1 }}>
+                  <tr style={{ borderBottom: "1px solid #334155" }}>
+                    {["Fecha","Hora","# Orden","Local","Polígono","Driver","Tipo","Total min","Prep","Asig","Viaje","Reparto"].map((h,i) => (
+                      <th key={h} style={{ padding: "6px 8px", textAlign: i >= 7 ? "right" : "left", color: MUTED2, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pedidos.map((r, i) => {
+                    const min = Number(r.min_entrega);
+                    const ok  = r.cumplimiento === "ok";
+                    return (
+                      <tr key={i} style={{ borderBottom: "1px solid #334155", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                        <td style={{ padding: "5px 8px", color: MUTED2, whiteSpace: "nowrap" }}>{r.fecha_creacion}</td>
+                        <td style={{ padding: "5px 8px", color: MUTED2, whiteSpace: "nowrap" }}>{(r.hora_creacion ?? "").slice(0,5)}</td>
+                        <td style={{ padding: "5px 8px", color: TEXT2,  whiteSpace: "nowrap" }}>{r.no_orden ?? "—"}</td>
+                        <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.local ?? "—"}</td>
+                        <td style={{ padding: "5px 8px", color: MUTED2 }}>{r.poligono ?? "—"}</td>
+                        <td style={{ padding: "5px 8px", color: TEXT2  }}>{r.nombre_conductor ?? "—"}</td>
+                        <td style={{ padding: "5px 8px", color: MUTED2 }}>{r.tipo_orden ?? "—"}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: ok ? GREEN2 : RED2 }}>{isNaN(min) ? "—" : min}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_prep, 25)}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_asignacion, 5)}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_viaje, 10)}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>{u(r.min_reparto, 12)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
