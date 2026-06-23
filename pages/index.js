@@ -373,9 +373,9 @@ export default function Dashboard() {
         {/* ── Filtros del Tareo (ambos tabs) ────────────────────────────────── */}
         {(mainTab === "disponibilidad" || mainTab === "analisis") && (
           <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", position: "sticky", top: 48, zIndex: 100 }}>
-            <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Filtros Tareo</span>
+            <span style={{ color: "var(--muted)", fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>{mainTab === "analisis" ? "Filtros" : "Filtros Tareo"}</span>
             <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Ciudad */}
+            {/* Ciudad — aplica en ambos tabs */}
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Ciudad</span>
               {["Todos", "Lima", "Arequipa", "Cuzco"].map((c) => (
@@ -391,7 +391,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Semanas */}
+            {/* Semanas — aplica en ambos tabs */}
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Semana</span>
               {ALL_SEMANAS.map((s) => (
@@ -406,42 +406,42 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Food/NoFood */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Tipo</span>
-              {["Todos", "Food", "No Food"].map((c) => (
-                <button key={c} onClick={() => setSelFood(c)}
-                  style={{
-                    padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                    border: `1px solid ${selFood === c ? "var(--accent)" : "var(--border)"}`,
-                    background: selFood === c ? "rgba(59,130,246,0.18)" : "transparent",
-                    color: selFood === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                  }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Pedidos */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Pedidos</span>
-              {["Todos", "Con Pedidos", "Sin Pedidos"].map((c) => (
-                <button key={c} onClick={() => setSelPedidos(c)}
-                  style={{
-                    padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
-                    border: `1px solid ${selPedidos === c ? "var(--accent)" : "var(--border)"}`,
-                    background: selPedidos === c ? "rgba(59,130,246,0.18)" : "transparent",
-                    color: selPedidos === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
-                  }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div style={{ width: 1, height: 16, background: "var(--border)" }} />
-            {/* Selects */}
-            <Select label="Polígono" value={selPoligono} options={allPoligonos} onChange={setSelPoligono} />
-            <Select label="Marca/Origen" value={selMarca} options={allMarcas} onChange={setSelMarca} />
+            {/* Filtros solo del tab Disponibilidad */}
+            {mainTab === "disponibilidad" && <>
+              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Tipo</span>
+                {["Todos", "Food", "No Food"].map((c) => (
+                  <button key={c} onClick={() => setSelFood(c)}
+                    style={{
+                      padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
+                      border: `1px solid ${selFood === c ? "var(--accent)" : "var(--border)"}`,
+                      background: selFood === c ? "rgba(59,130,246,0.18)" : "transparent",
+                      color: selFood === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
+                    }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Pedidos</span>
+                {["Todos", "Con Pedidos", "Sin Pedidos"].map((c) => (
+                  <button key={c} onClick={() => setSelPedidos(c)}
+                    style={{
+                      padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
+                      border: `1px solid ${selPedidos === c ? "var(--accent)" : "var(--border)"}`,
+                      background: selPedidos === c ? "rgba(59,130,246,0.18)" : "transparent",
+                      color: selPedidos === c ? "#93c5fd" : "var(--muted)", cursor: "pointer",
+                    }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div style={{ width: 1, height: 16, background: "var(--border)" }} />
+              <Select label="Polígono" value={selPoligono} options={allPoligonos} onChange={setSelPoligono} />
+              <Select label="Marca/Origen" value={selMarca} options={allMarcas} onChange={setSelMarca} />
+            </>}
             <button
               onClick={() => { setSelSemanas(ALL_SEMANAS); setSelFood("Todos"); setSelPedidos("Todos"); setSelPoligono("Todos"); setSelMarca("Todos"); setSelCiudad("Todos"); }}
               style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer" }}>
