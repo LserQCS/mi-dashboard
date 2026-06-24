@@ -479,7 +479,7 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
             </button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-            <thead
+            <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
                 {["#","Conductor","Pedidos","% ≤Obj","Avg min","Actividad"].map((h) => (
                   <th key={h} style={{ padding: "5px 8px", textAlign: h === "Conductor" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
