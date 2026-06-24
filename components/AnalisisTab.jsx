@@ -101,7 +101,7 @@ function PedidosTable({ pedidos }) {
     const match = s.match(/[T ](\d{2}:\d{2})/);
     return <span style={{color:"#64748b",fontSize:"0.65rem"}}>{match ? match[1] : s.slice(0,5)}</span>;
   };
-  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","Prep","TS Pickup","Asig","TS Rec","Viaje","TS Ent","Rep","TS Fin"];
+  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","Prep","TS Acept","Asig","TS C.Ti","Viaje","TS Rec","Recojo","TS C.En","TS Dest","Entrega","TS Fin","T.Ret","Nueva Disp"];
   return (
     <div style={{background:"#1e293b",border:"1px solid "+BRD,borderRadius:12,padding:"1.25rem 1.5rem",marginTop:"1rem",overflowX:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem",flexWrap:"wrap",gap:8}}>
@@ -149,15 +149,26 @@ function PedidosTable({ pedidos }) {
                       <td style={{padding:"5px 8px",color:T}}>{r.nombre_conductor ?? "—"}</td>
                       <td style={{padding:"5px 8px",color:M}}>{r.tipo_orden ?? "—"}</td>
                       <td style={{padding:"5px 8px",textAlign:"right",fontWeight:700,color:ok?G:R}}>{isNaN(min)?"—":min}</td>
+                      {/* Etapa 1: Tienda */}
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_asignando)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_prep,25)}</td>
+                      {/* Etapa 2: Asignación */}
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_pickup)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_asignacion,5)}</td>
-                      <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_recibiendo)}</td>
+                      {/* Etapa 3: Viaje al local */}
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_camino_tienda)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_viaje,10)}</td>
+                      {/* Etapa 4: Entrega al driver */}
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_recibiendo)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_pickup,5)}</td>
+                      {/* Etapa 5: Entrega cliente */}
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_camino_entrega)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_entregando)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{fmt(r.min_reparto,12)}</td>
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_finalizado)}</td>
+                      {/* Retorno y disponibilidad */}
+                      <td style={{padding:"5px 8px",textAlign:"right",color:"#64748b",fontSize:"0.68rem"}}>{r.min_retorno_est != null ? `${r.min_retorno_est} min` : "—"}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_disponible)}</td>
                     </tr>
                   );
                 })}
@@ -209,6 +220,7 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   const cT = Number(k.causa_tienda)     || 0;
   const cA = Number(k.causa_asignacion) || 0;
   const cV = Number(k.causa_viaje)      || 0;
+  const cP = Number(k.causa_pickup)     || 0;
   const cR = Number(k.causa_reparto)    || 0;
 
   const porPol  = data.porPoligono ?? [];
@@ -238,10 +250,11 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   const maxHora  = Math.max(...horaFull.map((r) => Number(r.total)), 1);
 
   const etapas = [
-    { label: "🏪 Prep. en tienda",   avg: Number(k.avg_prep)       || 0, benchmark: 25 },
-    { label: "🔄 Asignación driver",  avg: Number(k.avg_asignacion) || 0, benchmark: 5  },
-    { label: "🛣️ Viaje al local",      avg: Number(k.avg_viaje)      || 0, benchmark: 10 },
-    { label: "📦 Reparto a cliente",  avg: Number(k.avg_reparto)    || 0, benchmark: 12 },
+    { label: "🏪 Prep. en tienda",           avg: Number(k.avg_prep)        || 0, benchmark: 25 },
+    { label: "🔄 Asignación driver",          avg: Number(k.avg_asignacion)  || 0, benchmark: 5  },
+    { label: "🛣️ Viaje al local",              avg: Number(k.avg_viaje)       || 0, benchmark: 10 },
+    { label: "🛍️ Entrega al driver en tienda", avg: Number(k.avg_pickup)      || 0, benchmark: 5  },
+    { label: "📦 Entrega a cliente",           avg: Number(k.avg_reparto)     || 0, benchmark: 12 },
   ];
 
   return (
@@ -291,10 +304,11 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           <div style={{ color: GREEN }}>✅ Sin pedidos tardíos en el período</div>
         ) : (
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <CausaCard icon="🏪" label="Tienda (>25 min)"      count={cT} pctVal={pct(cT, totalFuera)} totalFuera={totalFuera} color={RED}    />
-            <CausaCard icon="🔄" label="Asignación (>5 min)"   count={cA} pctVal={pct(cA, totalFuera)} totalFuera={totalFuera} color={ORANGE} />
-            <CausaCard icon="🛣️" label="Viaje al local (>10)"  count={cV} pctVal={pct(cV, totalFuera)} totalFuera={totalFuera} color={YELLOW} />
-            <CausaCard icon="📦" label="Reparto (>12 min)"      count={cR} pctVal={pct(cR, totalFuera)} totalFuera={totalFuera} color={VIOLET} />
+            <CausaCard icon="🏪" label="Tienda (>25 min)"        count={cT} pctVal={pct(cT, totalFuera)} totalFuera={totalFuera} color={RED}    />
+            <CausaCard icon="🔄" label="Asignación (>5 min)"     count={cA} pctVal={pct(cA, totalFuera)} totalFuera={totalFuera} color={ORANGE} />
+            <CausaCard icon="🛣️" label="Viaje al local (>10)"    count={cV} pctVal={pct(cV, totalFuera)} totalFuera={totalFuera} color={YELLOW} />
+            <CausaCard icon="🛍️" label="Entrega al driver (>5)"  count={cP} pctVal={pct(cP, totalFuera)} totalFuera={totalFuera} color={BLUE}   />
+            <CausaCard icon="📦" label="Entrega cliente (>12)"   count={cR} pctVal={pct(cR, totalFuera)} totalFuera={totalFuera} color={VIOLET} />
           </div>
         )}
       </div>
@@ -313,26 +327,35 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
 
         <div style={{ ...card }}>
           <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.95rem", fontWeight: 700 }}>🕐 Pedidos por hora</h3>
+          {/* Barras */}
           <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110 }}>
             {horaFull.map((r) => {
               const tot  = Number(r.total);
               const barH = tot === 0 ? 0 : Math.max(3, Math.round((tot / maxHora) * 100));
               const p45  = tot === 0 ? 0 : pct(Number(r.dentro_obj), tot);
-              const col  = p45 >= 60 ? GREEN : p45 >= 40 ? YELLOW : tot === 0 ? BORDER : RED;
+              const col  = tot === 0 ? BORDER : p45 >= 70 ? GREEN : p45 >= 40 ? YELLOW : p45 >= 20 ? ORANGE : RED;
               return (
-                <div key={r.hora} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                  <div title={`${r.hora}h: ${tot} pedidos, ${p45}% ≤45 min`}
-                    style={{ width: "100%", height: barH, background: col, borderRadius: "2px 2px 0 0", minHeight: tot > 0 ? 3 : 0 }} />
-                  {r.hora % 3 === 0 && <span style={{ fontSize: "0.52rem", color: MUTED }}>{r.hora}</span>}
-                </div>
+                <div key={r.hora} title={`${r.hora}h: ${tot} pedidos, ${p45}% ≤45 min`}
+                  style={{ flex: 1, height: barH, background: col, borderRadius: "2px 2px 0 0", minHeight: tot > 0 ? 3 : 0 }} />
               );
             })}
           </div>
+          {/* Eje X alineado debajo de las barras */}
+          <div style={{ display: "flex", gap: 2, borderTop: `1px solid ${BORDER}`, paddingTop: 2 }}>
+            {horaFull.map((r) => (
+              <div key={r.hora} style={{ flex: 1, textAlign: "center" }}>
+                {r.hora % 3 === 0 && (
+                  <span style={{ fontSize: "0.5rem", color: MUTED }}>{r.hora}</span>
+                )}
+              </div>
+            ))}
+          </div>
           <div style={{ fontSize: "0.68rem", color: MUTED, marginTop: 6 }}>
             Color = % cumplimiento &nbsp;
-            <span style={{ color: GREEN }}>■</span> ≥60% &nbsp;
-            <span style={{ color: YELLOW }}>■</span> 40–60% &nbsp;
-            <span style={{ color: RED }}>■</span> &lt;40%
+            <span style={{ color: GREEN }}>■</span> ≥70% &nbsp;
+            <span style={{ color: YELLOW }}>■</span> 40–70% &nbsp;
+            <span style={{ color: ORANGE }}>■</span> 20–40% &nbsp;
+            <span style={{ color: RED }}>■</span> &lt;20%
           </div>
         </div>
       </div>
@@ -456,33 +479,4 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
             </button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                {["#","Conductor","Pedidos","% ≤Obj","Avg min","Actividad"].map((h) => (
-                  <th key={h} style={{ padding: "5px 8px", textAlign: h === "Conductor" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(showCond ? condTop : condTop.slice(0, 8)).map((r, i) => {
-                const p = Number(r.pct_ok) || 0;
-                const c = p >= 60 ? GREEN : p >= 40 ? YELLOW : RED;
-                return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{i + 1}</td>
-                    <td style={{ padding: "6px 8px", color: TEXT }}>{r.nombre_conductor}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ color: c, fontWeight: 700 }}>{p}%</span></td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: Number(r.avg_min) > 45 ? RED : GREEN }}>{fmt1(r.avg_min)}</td>
-                    <td style={{ padding: "6px 8px", width: 100 }}><Bar pct={(Number(r.total) / maxCond) * 100} color={BLUE} height={5} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-    </div>
-  );
-}
+            <thead
