@@ -1,11 +1,15 @@
 /**
  * GET /api/debug-orden?no_orden=PRIM-SB-190626-0025
- * Devuelve todos los campos raw de la vista para un pedido específico.
+ * Diagnóstico completo: SELECT *, estadísticas de NULLs por proveedor, definición del view.
  */
 import { runQuery } from "../../lib/bigquery";
 
 const VIEW = () =>
   `\`${process.env.GCP_PROJECT_ID}.${process.env.BQ_DATASET || "shared_views"}.${process.env.BQ_TABLE || "liquidacion_logistics"}\``;
+
+const PROJECT  = () => process.env.GCP_PROJECT_ID;
+const DATASET  = () => process.env.BQ_DATASET  || "shared_views";
+const TABLE    = () => process.env.BQ_TABLE    || "liquidacion_logistics";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,53 +18,81 @@ export default async function handler(req, res) {
   const { no_orden } = req.query;
   if (!no_orden) return res.status(400).json({ error: "Falta no_orden" });
 
-  try {
-    const sql = `
-      SELECT
-        no_orden,
-        estado,
-        proveedor,
-        fecha_creacion,
-        hora_creacion,
-        -- Todos los estados raw (tipo y valor exacto)
-        estado_pendiente,
-        CAST(estado_pendiente      AS STRING) AS str_pendiente,
-        estado_asignando,
-        CAST(estado_asignando      AS STRING) AS str_asignando,
-        estado_aceptado,
-        CAST(estado_aceptado       AS STRING) AS str_aceptado,
-        estado_camino_tienda,
-        CAST(estado_camino_tienda  AS STRING) AS str_camino_tienda,
-        estado_recibiendo,
-        CAST(estado_recibiendo     AS STRING) AS str_recibiendo,
-        estado_camino_entrega,
-        CAST(estado_camino_entrega AS STRING) AS str_camino_entrega,
-        estado_entregando,
-        CAST(estado_entregando     AS STRING) AS str_entregando,
-        estado_finalizado,
-        CAST(estado_finalizado     AS STRING) AS str_finalizado,
-        -- Tests de DATETIME_DIFF directo
-        DATETIME_DIFF(estado_finalizado, estado_asignando, MINUTE)    AS diff_fin_asig,
-        DATETIME_DIFF(estado_camino_tienda, estado_asignando, MINUTE) AS diff_cti_asig,
-        DATETIME_DIFF(estado_recibiendo, estado_camino_tienda, MINUTE) AS diff_rec_cti
-      FROM ${VIEW()}
-      WHERE no_orden = '${no_orden.replace(/'/g, "\\'")}'
-      LIMIT 5
-    `;
+  const ord = no_orden.replace(/'/g, "\'");
 
-    const rows = await runQuery(sql);
+  // Q1: SELECT * para el pedido especifico
+  const sqlStar = `SELECT * FROM ${VIEW()} WHERE no_orden = '${ord}' LIMIT 3`;
 
-    // Serializar objetos BigQuery typed
-    const flatRow = (row) => {
-      const out = {};
-      for (const [k, v] of Object.entries(row)) {
-        out[k] = (v !== null && typeof v === "object" && "value" in v) ? v.value : v;
-      }
-      return out;
-    };
+  // Q2: estadísticas de NULL por proveedor (ultimos 7 dias)
+  // Responde: ¿son TODOS los campos NULL para todos? ¿o solo para Yango?
+  const sqlNulls = `
+    SELECT
+      IFNULL(proveedor, '(null)') AS proveedor,
+      COUNT(*)                                               AS total,
+      COUNTIF(estado_camino_tienda  IS NOT NULL)             AS ct_nonnull,
+      COUNTIF(estado_recibiendo     IS NOT NULL)             AS rec_nonnull,
+      COUNTIF(estado_camino_entrega IS NOT NULL)             AS cen_nonnull,
+      COUNTIF(estado_entregando     IS NOT NULL)             AS ent_nonnull
+    FROM ${VIEW()}
+    WHERE fecha_creacion >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+      AND estado_finalizado IS NOT NULL
+    GROUP BY proveedor
+    ORDER BY total DESC
+    LIMIT 30
+  `;
 
-    return res.status(200).json({ rows: rows.map(flatRow), sql });
-  } catch (e) {
-    return res.status(500).json({ error: e.message, stack: e.stack });
-  }
+  // Q3: definicion SQL del view (para ver si filtra por proveedor)
+  const sqlViewDef = `
+    SELECT view_definition, last_modified_time
+    FROM \`${PROJECT()}.${DATASET()}.INFORMATION_SCHEMA.VIEWS\`
+    WHERE table_name = '${TABLE()}' 
+  `;
+
+  // Q4: tablas origen disponibles en el dataset
+  const sqlTables = `
+    SELECT table_name, table_type, creation_time, last_modified_time
+    FROM \`${PROJECT()}.${DATASET()}.INFORMATION_SCHEMA.TABLES\`
+    ORDER BY table_name
+  `;
+
+  const flatRow = (row) => {
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (v === null || v === undefined) { out[k] = null; continue; }
+      if (typeof v === "object" && "value" in v) { out[k] = v.value; continue; }
+      if (v instanceof Date) { out[k] = v.toISOString(); continue; }
+      out[k] = v;
+    }
+    return out;
+  };
+
+  const safeQuery = async (sql, label) => {
+    try { return { ok: true,  rows: (await runQuery(sql)).map(flatRow) }; }
+    catch(e) { return { ok: false, error: e.message, label }; }
+  };
+
+  const [rStar, rNulls, rDef, rTables] = await Promise.all([
+    safeQuery(sqlStar,    "select_star"),
+    safeQuery(sqlNulls,   "null_stats"),
+    safeQuery(sqlViewDef, "view_def"),
+    safeQuery(sqlTables,  "tables"),
+  ]);
+
+  return res.status(200).json({
+    // ¿El pedido tiene datos?
+    pedido: rStar.ok ? rStar.rows : { error: rStar.error },
+    columnas: rStar.ok && rStar.rows.length ? Object.keys(rStar.rows[0]) : [],
+
+    // ¿Cuántos registros tienen los campos NOT NULL, por proveedor?
+    // Si ct_nonnull=0 para todos → seguridad a nivel columna (nuestra SA sin permiso)
+    // Si solo Yango tiene 0 → la lógica del view excluye Yango
+    null_stats_por_proveedor: rNulls.ok ? rNulls.rows : { error: rNulls.error },
+
+    // SQL real del view
+    view_definition: rDef.ok ? (rDef.rows[0]?.view_definition ?? null) : { error: rDef.error },
+    view_modified:   rDef.ok ? (rDef.rows[0]?.last_modified_time ?? null) : null,
+
+    // Tablas/views en el dataset
+    tablas_en_dataset: rTables.ok ? rTables.rows : { error: rTables.error },
+  });
 }
