@@ -480,3 +480,32 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
             <thead
+              <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                {["#","Conductor","Pedidos","% ≤Obj","Avg min","Actividad"].map((h) => (
+                  <th key={h} style={{ padding: "5px 8px", textAlign: h === "Conductor" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(showCond ? condTop : condTop.slice(0, 8)).map((r, i) => {
+                const p = Number(r.pct_ok) || 0;
+                const c = p >= 70 ? GREEN : p >= 40 ? YELLOW : RED;
+                return (
+                  <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{i + 1}</td>
+                    <td style={{ padding: "6px 8px", color: TEXT }}>{r.nombre_conductor}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ color: c, fontWeight: 700 }}>{p}%</span></td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", color: Number(r.avg_min) > 45 ? RED : GREEN }}>{fmt1(r.avg_min)}</td>
+                    <td style={{ padding: "6px 8px", width: 100 }}><Bar pct={(Number(r.total) / maxCond) * 100} color={BLUE} height={5} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+    </div>
+  );
+}
