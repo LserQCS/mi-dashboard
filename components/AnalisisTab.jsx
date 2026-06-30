@@ -101,7 +101,7 @@ function PedidosTable({ pedidos }) {
     const match = s.match(/[T ](\d{2}:\d{2})/);
     return <span style={{color:"#64748b",fontSize:"0.65rem"}}>{match ? match[1] : s.slice(0,5)}</span>;
   };
-  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Tipo","Total","TS Asig","Prep","TS Acept","Asig","TS C.Ti","Viaje","TS Rec","Recojo","TS C.En","TS Dest","Entrega","TS Fin","T.Ret","Nueva Disp"];
+  const hdrs = ["Fecha","Hora","# Orden","Local","Driver","Total","TS Asig","Prep","TS Acept","Asig","TS C.Ti","Viaje","TS Rec","Recojo","TS C.En","TS Dest","Entrega","TS Fin","T.Ret","Nueva Disp"];
   return (
     <div style={{background:"#1e293b",border:"1px solid "+BRD,borderRadius:12,padding:"1.25rem 1.5rem",marginTop:"1rem",overflowX:"auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem",flexWrap:"wrap",gap:8}}>
@@ -147,7 +147,6 @@ function PedidosTable({ pedidos }) {
                       <td style={{padding:"5px 8px",color:T,whiteSpace:"nowrap"}}>{r.no_orden ?? "—"}</td>
                       <td style={{padding:"5px 8px",color:T}}>{r.local ?? "—"}</td>
                       <td style={{padding:"5px 8px",color:T}}>{r.nombre_conductor ?? "—"}</td>
-                      <td style={{padding:"5px 8px",color:M}}>{r.tipo_orden ?? "—"}</td>
                       <td style={{padding:"5px 8px",textAlign:"right",fontWeight:700,color:ok?G:R}}>{isNaN(min)?"—":min}</td>
                       {/* Etapa 1: Tienda */}
                       <td style={{padding:"5px 8px",textAlign:"right"}}>{tsHM(r.ts_asignando)}</td>
