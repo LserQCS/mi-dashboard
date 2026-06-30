@@ -35,11 +35,12 @@ function buildExtraWhere(ciudad) {
   const pols = CIUDAD_BQ_POLS[ciudad];
   if (pols) {
     const list = pols.map(p => `'${p}'`).join(", ");
-    return `AND TRIM(IFNULL(poligono,'')) IN (${list})`;
+    // lp.poligono viene del JOIN con la CTE local_pol (mapeado desde t.local)
+    return `AND TRIM(IFNULL(lp.poligono,'')) IN (${list})`;
   }
   if (ciudad === "Lima") {
     const list = ALL_NON_LIMA_BQ.map(p => `'${p}'`).join(", ");
-    return `AND (poligono IS NULL OR TRIM(poligono) NOT IN (${list}))`;
+    return `AND (lp.poligono IS NULL OR TRIM(lp.poligono) NOT IN (${list}))`;
   }
   return "";
 }
