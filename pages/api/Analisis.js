@@ -12,9 +12,9 @@ import {
   getTopConductores,
   getLocales,
   getPedidos,
-  getTendenciaAsig,
-  getAsigPorHora,
-  getDriverAsig,
+  getTendenciaEtapas,
+  getEtapasPorHora,
+  getDriverEtapas,
 } from "../../lib/bigquery";
 
 // ─── Filtro ciudad → BigQuery ────────────────────────────────────────────────
@@ -554,9 +554,9 @@ export default async function handler(req, res) {
       fetchTurnosData(),
       getLocales(bqCity),
       getPedidos(bqFull),
-      getTendenciaAsig(bqFull),
-      getAsigPorHora(bqFull),
-      getDriverAsig(bqFull),
+      getTendenciaEtapas(bqFull),
+      getEtapasPorHora(bqFull),
+      getDriverEtapas(bqFull),
     ]);
 
   const safe = (r, fallback) => (r.status === "fulfilled" ? r.value : fallback);
@@ -569,9 +569,9 @@ export default async function handler(req, res) {
   const turnosData  = safe(r_turnos,    { brecha: [], turnosDetalle: [] });
   const brecha      = filterBrechaByCiudad(turnosData.brecha, ciudad);
   const locales     = safe(r_locales,   []).map((r) => r.local).filter(Boolean);
-  const tendAsig    = safe(r_tendAsig,  []);
-  const asigPorHora = safe(r_asigHora,  []);
-  const driverAsig  = safe(r_driverAsig,[]);
+  const tendEtapas    = safe(r_tendAsig,   []);
+  const etapasPorHora = safe(r_asigHora,   []);
+  const driverEtapas  = safe(r_driverAsig, []);
 
   const flatRow = (row) => {
     const out = {};
@@ -584,19 +584,23 @@ export default async function handler(req, res) {
   const rechazos = crossReferenceRechazos(pedidos, turnosData.turnosDetalle);
 
   const errors = [];
-  if (r_kpis.status    === "rejected") errors.push({ source: "kpis",      msg: r_kpis.reason?.message });
-  if (r_pol.status     === "rejected") errors.push({ source: "poligono",  msg: r_pol.reason?.message });
-  if (r_hora.status    === "rejected") errors.push({ source: "hora",      msg: r_hora.reason?.message });
-  if (r_cond.status    === "rejected") errors.push({ source: "conductor", msg: r_cond.reason?.message });
-  if (r_turnos.status  === "rejected") errors.push({ source: "turnos",    msg: r_turnos.reason?.message });
-  if (r_pedidos.status === "rejected") errors.push({ source: "pedidos",   msg: r_pedidos.reason?.message });
-  if (r_locales.status === "rejected") errors.push({ source: "locales",   msg: r_locales.reason?.message });
+  if (r_kpis.status       === "rejected") errors.push({ source: "kpis",        msg: r_kpis.reason?.message });
+  if (r_pol.status        === "rejected") errors.push({ source: "poligono",    msg: r_pol.reason?.message });
+  if (r_hora.status       === "rejected") errors.push({ source: "hora",        msg: r_hora.reason?.message });
+  if (r_cond.status       === "rejected") errors.push({ source: "conductor",   msg: r_cond.reason?.message });
+  if (r_turnos.status     === "rejected") errors.push({ source: "turnos",      msg: r_turnos.reason?.message });
+  if (r_pedidos.status    === "rejected") errors.push({ source: "pedidos",     msg: r_pedidos.reason?.message });
+  if (r_locales.status    === "rejected") errors.push({ source: "locales",     msg: r_locales.reason?.message });
+  if (r_tendAsig.status   === "rejected") errors.push({ source: "tendEtapas",  msg: r_tendAsig.reason?.message });
+  if (r_asigHora.status   === "rejected") errors.push({ source: "etapasPorHora", msg: r_asigHora.reason?.message });
+  if (r_driverAsig.status === "rejected") errors.push({ source: "driverEtapas",  msg: r_driverAsig.reason?.message });
+  if (errors.length) console.error("[Analisis API] query errors:", JSON.stringify(errors));
 
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
   return res.status(200).json({
     kpis, proveedor, porPoligono, porHora, conductores,
     brecha, locales, pedidos, rechazos,
-    tendAsig, asigPorHora, driverAsig,
+    tendEtapas, etapasPorHora, driverEtapas,
     range, errors,
   });
 }

@@ -272,6 +272,16 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   return (
     <div style={{ paddingTop: "1rem" }}>
 
+      {/* ── Debug: errores de queries (temporal) ─────────────────────────── */}
+      {(data.errors?.length > 0) && (
+        <div style={{ background: "#450a0a", border: "1px solid #ef4444", borderRadius: 8, padding: "10px 14px", marginBottom: "1rem", fontSize: "0.72rem", color: "#fca5a5" }}>
+          <strong>⚠ Errores en queries:</strong>
+          {data.errors.map((e, i) => (
+            <div key={i}><code>{e.source}</code>: {e.msg}</div>
+          ))}
+        </div>
+      )}
+
       {/* ── Filtro Local ──────────────────────────────────────────────────── */}
       {locales.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
