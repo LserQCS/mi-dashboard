@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Head from "next/head";
 import NavBar from "../components/NavBar";
+import RechazosTab from "../components/RechazosTab";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const fmtDate = (d) => (d instanceof Date ? d.toISOString().split("T")[0] : d);
@@ -137,6 +138,7 @@ export default function Analisis() {
   const [error, setError]       = useState(null);
   const [selSemanas, setSelSemanas] = useState([23, 24]);
   const [showConductores, setShowConductores] = useState(false);
+  const [activeTab, setActiveTab] = useState("analisis"); // "analisis" | "rechazos"
 
   // ─── Fetch ────────────────────────────────────────────────────────────────
   const load = useCallback(async (r) => {
@@ -174,11 +176,12 @@ export default function Analisis() {
   }
 
   // ─── Derived ─────────────────────────────────────────────────────────────
-  const kpis       = data?.kpis       ?? {};
+  const kpis        = data?.kpis        ?? {};
   const porPoligono = data?.porPoligono ?? [];
-  const porHora    = data?.porHora     ?? [];
+  const porHora     = data?.porHora     ?? [];
   const conductores = data?.conductores ?? [];
-  const brecha     = data?.brecha      ?? [];
+  const brecha      = data?.brecha      ?? [];
+  const rechazos    = data?.rechazos    ?? [];
 
   const totalFuera   = Number(kpis.fuera_obj)      || 0;
   const totalPedidos = Number(kpis.total_pedidos)   || 0;
@@ -274,6 +277,29 @@ export default function Analisis() {
             </div>
           </div>
 
+          {/* ── Tab switcher ──────────────────────────────────────────── */}
+          <div style={{ display: "flex", gap: 4, marginBottom: "1.25rem", borderBottom: `1px solid ${BORDER}`, paddingBottom: "0" }}>
+            {[
+              { key: "analisis", label: "📈 Análisis Operacional" },
+              { key: "rechazos", label: `🚫 Rechazos Detectados${rechazos.length ? ` (${rechazos.length})` : ""}` },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                style={{
+                  padding: "7px 18px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                  border: "none", borderBottom: activeTab === key ? `2px solid ${BLUE}` : "2px solid transparent",
+                  background: "transparent",
+                  color: activeTab === key ? TEXT : MUTED,
+                  marginBottom: "-1px",
+                  transition: "color 0.2s",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {error && (
             <div style={{ background: "#450a0a", border: `1px solid ${RED}`, borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1rem", fontSize: "0.8rem", color: "#fca5a5" }}>
               Error: {error}
@@ -286,7 +312,14 @@ export default function Analisis() {
             </div>
           )}
 
-          {!loading && data && (
+          {/* ── Rechazos tab ──────────────────────────────────────────── */}
+          {!loading && activeTab === "rechazos" && (
+            <div style={{ ...card }}>
+              <RechazosTab rechazos={rechazos} />
+            </div>
+          )}
+
+          {!loading && data && activeTab === "analisis" && (
             <>
               {/* ── 1. KPI Cards ─────────────────────────────────────────── */}
               <div style={{ display: "flex", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap" }}>
