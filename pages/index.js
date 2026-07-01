@@ -152,8 +152,6 @@ const QUICK_FILTERS = [
   { label: "Este mes",       getRange: () => ({ desde: (() => { const d = new Date(Date.now()-5*3600_000); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; })(), hasta: peruDate(0) }) },
 ];
 
-const ALL_SEMANAS = [21, 22, 23, 24];
-
 const CIUDAD_POLS = {
   Arequipa: ["Pol Cayma", "Pol Mariscal"],
   Cuzco:    ["Pol Larapa", "Pol La Cultura", "Pol Alameda"],
@@ -189,7 +187,7 @@ export default function Dashboard() {
   const [mainTab, setMainTab] = useState("disponibilidad");
 
   // ── Filtros del tareo (GSheets) ─────────────────────────────────────────────
-  const [selSemanas,  setSelSemanas]  = useState(ALL_SEMANAS);
+  const [selSemanas,  setSelSemanas]  = useState([]);
   const [selCiudad,   setSelCiudad]   = useState("Todos");
 
   const { prevDesde, prevHasta } = prevPeriod(applied.desde, applied.hasta);
@@ -247,6 +245,23 @@ export default function Dashboard() {
     const no_food = (tareo.data.no_food || []).filter(filter);
     return { food, no_food, total: food.length + no_food.length };
   }, [tareo.data, selSemanas, selCiudad]);
+
+  // Semanas disponibles derivadas del tareo real (no hardcodeadas)
+  const allSemanas = useMemo(() => {
+    if (!tareo.data) return [];
+    const all = [...(tareo.data.food || []), ...(tareo.data.no_food || [])];
+    const set = new Set();
+    for (const r of all) {
+      const n = parseInt(r.semana, 10);
+      if (!isNaN(n)) set.add(n);
+    }
+    return [...set].sort((a, b) => a - b);
+  }, [tareo.data]);
+
+  // Cuando carga el tareo por primera vez, seleccionar todas las semanas disponibles
+  useEffect(() => {
+    if (allSemanas.length > 0) setSelSemanas(allSemanas);
+  }, [JSON.stringify(allSemanas)]); // eslint-disable-line
 
   const kd   = kpis.data    ?? {};
   const kp   = kpisPrev.data ?? {};
@@ -361,7 +376,7 @@ export default function Dashboard() {
           <div style={{ width: 1, height: 16, background: "var(--border)" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>Semana</span>
-            {ALL_SEMANAS.map((s) => (
+            {allSemanas.map((s) => (
               <button key={s} onClick={() => setSelSemanas((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s])}
                 style={{
                   padding: "3px 10px", borderRadius: 16, fontSize: "0.7rem",
@@ -372,7 +387,7 @@ export default function Dashboard() {
             ))}
           </div>
           <button
-            onClick={() => { setSelSemanas(ALL_SEMANAS); setSelCiudad("Todos"); }}
+            onClick={() => { setSelSemanas(allSemanas); setSelCiudad("Todos"); }}
             style={{ marginLeft: "auto", padding: "3px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: "0.7rem", cursor: "pointer" }}>
             Limpiar
           </button>

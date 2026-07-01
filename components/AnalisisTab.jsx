@@ -78,7 +78,7 @@ function EtapaRow({ label, avg, benchmark }) {
   );
 }
 
-const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
+const ALL_SEMANAS_BRECHA = []; // populated dynamically from tareo
 
 // ─── Config por etapa ─────────────────────────────────────────────────────────
 const ETAPAS_CFG = [
