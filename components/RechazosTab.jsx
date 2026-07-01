@@ -138,12 +138,15 @@ export default function RechazosTab({ rechazos = [] }) {
       </div>
 
       {/* Tabla */}
-      <div style={{ overflowX: "auto", marginTop: 8 }}>
+      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 360, marginTop: 8 }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
               {["Fecha", "Hora", "# Orden", "Polígono", "Local", "Min espera", "Tomó el pedido", "No tomaron (disponibles)"].map((h) => (
-                <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontWeight: 500, color: MUTED, fontSize: "0.68rem", whiteSpace: "nowrap" }}>
+                <th key={h} style={{
+                  padding: "6px 10px", textAlign: "left", fontWeight: 500, color: MUTED, fontSize: "0.68rem", whiteSpace: "nowrap",
+                  ...(h === "# Orden" ? { width: 80, maxWidth: 80 } : {}),
+                }}>
                   {h}
                 </th>
               ))}
@@ -157,7 +160,7 @@ export default function RechazosTab({ rechazos = [] }) {
                 <tr key={r.no_orden ?? i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)", verticalAlign: "top" }}>
                   <td style={td}>{r.fecha}</td>
                   <td style={td}>{r.hora}</td>
-                  <td style={{ ...td, fontFamily: "monospace", fontSize: "0.65rem", color: "#64748b" }}>{r.no_orden}</td>
+                  <td style={{ ...td, fontFamily: "monospace", fontSize: "0.65rem", color: "#64748b", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }}>{r.no_orden}</td>
                   <td style={td}>{r.poligono}</td>
                   <td style={{ ...td, maxWidth: 160, whiteSpace: "normal", color: TEXT }}>{r.local}</td>
                   <td style={{ ...td, fontWeight: 700, color: col, textAlign: "right" }}>{espera.toFixed(1)}</td>
@@ -175,11 +178,4 @@ export default function RechazosTab({ rechazos = [] }) {
               );
             })}
           </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div style={{ padding: "20px", textAlign: "center", color: MUTED }}>Sin resultados para ese filtro.</div>
-        )}
-      </div>
-    </div>
-  );
-}
+      

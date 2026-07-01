@@ -60,7 +60,7 @@ function KpiCard({ label, value, sub, color = TEXT }) {
 // ─── Causa Card ───────────────────────────────────────────────────────────────
 function CausaCard({ icon, label, count, pctVal, totalFuera, color }) {
   return (
-    <div style={{ ...card, flex: 1, minWidth: 140, borderTop: `3px solid ${color}` }}>
+    <div style={{ ...card, borderTop: `3px solid ${color}` }}>
       <div style={{ fontSize: "1.3rem", marginBottom: 4 }}>{icon}</div>
       <div style={{ color: TEXT, fontWeight: 600, fontSize: "0.82rem", marginBottom: 2 }}>{label}</div>
       <div style={{ color, fontWeight: 700, fontSize: "1.5rem", lineHeight: 1 }}>{pctVal}%</div>
@@ -456,7 +456,7 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           {totalFuera === 0 ? (
             <div style={{ color: GREEN }}>✅ Sin pedidos tardíos en el período</div>
           ) : (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
               <CausaCard icon="🏪" label="Tienda (>25 min)"       count={cT} pctVal={pct(cT, totalFuera)} totalFuera={totalFuera} color={RED}    />
               <CausaCard icon="🔄" label="Asignación (>5 min)"    count={cA} pctVal={pct(cA, totalFuera)} totalFuera={totalFuera} color={ORANGE} />
               <CausaCard icon="🛣️" label="Viaje al local (>10)"   count={cV} pctVal={pct(cV, totalFuera)} totalFuera={totalFuera} color={YELLOW} />
@@ -699,6 +699,24 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
                 {showCond ? "Ver menos" : `Ver todos (${drivers.length})`}
               </button>
             </div>
+
+            {/* Gráfico: cumplimiento por driver, peores primero */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 2rem", marginBottom: "1rem" }}>
+              {[...drivers].sort((a, b) => (parseFloat(a.pct_ok)||0) - (parseFloat(b.pct_ok)||0)).slice(0, 16).map((r) => {
+                const v   = parseFloat(r.pct_ok) || 0;
+                const col = v >= 70 ? GREEN : v >= 40 ? YELLOW : RED;
+                return (
+                  <div key={r.nombre_conductor} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+                    <span style={{ fontSize: "0.67rem", color: TEXT, minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_conductor}</span>
+                    <div style={{ flex: 1, background: BORDER, borderRadius: 3, height: 7, overflow: "hidden" }}>
+                      <div style={{ width: `${v}%`, height: 7, background: col, borderRadius: 3 }} />
+                    </div>
+                    <span style={{ fontSize: "0.65rem", fontWeight: 700, color: col, minWidth: 30, textAlign: "right" }}>{v}%</span>
+                  </div>
+                );
+              })}
+            </div>
+
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
@@ -772,6 +790,25 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
       {porPol.length > 0 ? (
         <div style={{ ...card, marginBottom: "1rem", overflowX: "auto" }}>
           <h3 style={{ margin: "0 0 0.75rem", fontSize: "0.95rem", fontWeight: 700 }}>🗺️ Rendimiento por Polígono</h3>
+
+          {/* Gráfico de barras horizontal: % cumplimiento por polígono */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 2rem", marginBottom: "1rem" }}>
+            {[...porPol].sort((a, b) => pct(Number(a.dentro_obj), Number(a.total)) - pct(Number(b.dentro_obj), Number(b.total))).map((r) => {
+              const v   = pct(Number(r.dentro_obj), Number(r.total));
+              const col = v >= 60 ? GREEN : v >= 40 ? YELLOW : RED;
+              return (
+                <div key={r.poligono} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                  <span style={{ fontSize: "0.7rem", color: TEXT, minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.poligono ?? "—"}</span>
+                  <div style={{ flex: 1, background: BORDER, borderRadius: 3, height: 8, overflow: "hidden" }}>
+                    <div style={{ width: `${v}%`, height: 8, background: col, borderRadius: 3 }} />
+                  </div>
+                  <span style={{ fontSize: "0.68rem", fontWeight: 700, color: col, minWidth: 32, textAlign: "right" }}>{v}%</span>
+                  <span style={{ fontSize: "0.62rem", color: MUTED, minWidth: 52, textAlign: "right" }}>{Number(r.total).toLocaleString()} ped</span>
+                </div>
+              );
+            })}
+          </div>
+
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
@@ -951,6 +988,23 @@ function SegmentosTabs({ data }) {
       {rows.length === 0 ? (
         <p style={{ color: MUTED, fontSize: "0.78rem" }}>Sin datos para este período.</p>
       ) : (
+        <>
+        {/* Gráfico: % cumplimiento por segmento, peores primero */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 2rem", marginBottom: "1rem" }}>
+          {[...rows].sort((a, b) => pctOk(a) - pctOk(b)).slice(0, 14).map((r, i) => {
+            const v   = pctOk(r);
+            const col = v >= 70 ? GREEN : v >= 40 ? YELLOW : RED;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+                <span style={{ fontSize: "0.68rem", color: TEXT, minWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r[nameKey] ?? "—"}</span>
+                <div style={{ flex: 1, background: BORDER, borderRadius: 3, height: 7, overflow: "hidden" }}>
+                  <div style={{ width: `${v}%`, height: 7, background: col, borderRadius: 3 }} />
+                </div>
+                <span style={{ fontSize: "0.65rem", fontWeight: 700, color: col, minWidth: 30, textAlign: "right" }}>{v}%</span>
+              </div>
+            );
+          })}
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" }}>
             <thead>
@@ -990,25 +1044,4 @@ function SegmentosTabs({ data }) {
                     {tab === "tienda" && <td style={{ ...tdS(false), color: MUTED, fontSize: "0.65rem" }}>{r.poligono ?? "—"}</td>}
                     <td style={{ ...tdS(), color: MUTED }}>{Number(r.total).toLocaleString()}</td>
                     <td style={{ ...tdS() }}><span style={{ color: cOk, fontWeight: 700 }}>{ok}%</span></td>
-                    <td style={{ ...tdS(), color: cAvg, fontWeight: 600 }}>{fmt1(avg)}</td>
-                    {etapaAvgs.map((e, j) => (
-                      <td key={j} style={{ ...tdS(), color: e.v > e.thr ? RED : e.v > e.thr * 0.7 ? ORANGE : MUTED }}>
-                        {e.v > 0 ? fmt1(e.v) : "—"}
-                      </td>
-                    ))}
-                    <td style={{ ...tdS() }}>
-                      <span style={{ color: cp.color, fontWeight: 600, fontSize: "0.65rem" }}>
-                        {cp.label} {cp.pct > 0 ? `(${cp.pct}%)` : ""}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+                    <td style={{ ...tdS()
