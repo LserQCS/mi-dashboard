@@ -60,9 +60,6 @@ const MARCA_TIENDA_TO_LOCAL = {
   "Don Tito|La Molina": "DT La Molina",
   "Don Tito|Magdalena": "DT Magdalena",
   "Don Tito|Miraflores": "DT Miraflores",
-  "Don Tito|San Borja": "DT San Borja",
-  "Don Tito|San Miguel": "DT San Miguel",
-  "Don Tito|Surco": "DT Surco",
   "Di Mazza|Cayma": "Di Mazza Cayma",
   "El Chino Vegano|Jesus Maria": "El Chino Vegano JM",
   "Tablon|Alameda": "El Tablón - Alameda",
@@ -108,6 +105,7 @@ const MARCA_TIENDA_TO_LOCAL = {
   "Maria Almenara|Santa Catalina": "MARIA ALMENARA - SANTACATA",
   "Maria Almenara|Santa Anita": "MARIA ALMENARA- SANTA ANITA",
   "Maria Almenara|Bolichera": "MM - BOLICHERA",
+  "Maria Almenara|Chacarilla": "MM-CHACARILLA",
   "Maria Almenara|La Mar": "MM - LA MAR",
   "Maria Almenara|La Molina": "MM - LA MOLINA",
   "Mamma Tomato|Benavides": "MT Benavides",
@@ -524,10 +522,20 @@ function buildPorMarca(porLocal) {
     if (!LOCAL_TO_MARCA[local]) LOCAL_TO_MARCA[local] = marca;
   }
 
+  // Normalize brand names that appear in different cases across locals
+  const normalizeMarca = (m) => {
+    if (!m) return "Otros";
+    if (m.toUpperCase() === "MARIA ALMENARA" || m === "MM") return "Maria Almenara";
+    return m;
+  };
+
   const map = {};
   for (const r of porLocal) {
-    const marca = LOCAL_TO_MARCA[r.local]
-      || (r.local?.includes(" - ") ? r.local.split(" - ")[0].trim() : r.local?.split(" ")[0] ?? "Otros");
+    const rawMarca = LOCAL_TO_MARCA[r.local]
+      || (r.local?.startsWith("MM") ? "MM" :
+          r.local?.includes(" - ") ? r.local.split(" - ")[0].trim() :
+          r.local?.split(" ")[0] ?? "Otros");
+    const marca = normalizeMarca(rawMarca);
     if (!map[marca]) {
       map[marca] = { marca, total: 0, dentro_obj: 0, fuera_obj: 0, sumMin: 0, sumPrep: 0, sumAsig: 0, sumViaje: 0, sumPickup: 0, sumRep: 0, causa_tienda: 0, causa_asignacion: 0, causa_viaje: 0, causa_pickup: 0, causa_reparto: 0 };
     }
@@ -643,12 +651,4 @@ export default async function handler(req, res) {
   if (r_local.status      === "rejected") errors.push({ source: "porLocal",       msg: r_local.reason?.message });
   if (errors.length) console.error("[Analisis API] query errors:", JSON.stringify(errors));
 
-  res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
-  return res.status(200).json({
-    kpis, proveedor, porPoligono, porHora, conductores,
-    brecha, locales, pedidos, rechazos,
-    tendEtapas, etapasPorHora, driverEtapas,
-    porLocal, porMarca,
-    range, errors,
-  });
-}
+  res.setHeader("Cache-Con
