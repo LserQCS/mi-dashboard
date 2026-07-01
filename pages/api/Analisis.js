@@ -522,7 +522,6 @@ function buildPorMarca(porLocal) {
     if (!LOCAL_TO_MARCA[local]) LOCAL_TO_MARCA[local] = marca;
   }
 
-  // Normalize brand names that appear in different cases across locals
   const normalizeMarca = (m) => {
     if (!m) return "Otros";
     if (m.toUpperCase() === "MARIA ALMENARA" || m === "MM") return "Maria Almenara";
@@ -651,4 +650,12 @@ export default async function handler(req, res) {
   if (r_local.status      === "rejected") errors.push({ source: "porLocal",       msg: r_local.reason?.message });
   if (errors.length) console.error("[Analisis API] query errors:", JSON.stringify(errors));
 
-  res.setHeader("Cache-Con
+  res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
+  return res.status(200).json({
+    kpis, proveedor, porPoligono, porHora, conductores,
+    brecha, locales, pedidos, rechazos,
+    tendEtapas, etapasPorHora, driverEtapas,
+    porLocal, porMarca,
+    range, errors,
+  });
+}
