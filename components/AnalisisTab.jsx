@@ -629,8 +629,8 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
 
       {/* ── Detalle de Pedidos ─────────────────────────────────────────────── */}
       <PedidosTable pedidos={data.pedidos ?? []} />
-      {/* Brecha de turnos */}
-      <div style={{ ...card, marginBottom: "1rem" }}>
+      {/* [Brecha de turnos eliminada] */}
+      {false && <div style={{ ...card, marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>👥 Brecha de Turnos</h3>
           <span style={{ color: MUTED, fontSize: "0.7rem" }}>
@@ -698,45 +698,78 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
             </>
           );
         })()}
-      </div>
+      </div>}
 
-      {/* Conductores */}
-      {condTop.length > 0 && (
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>🚀 Performance por Conductor</h3>
-            <button onClick={() => setShowCond((v) => !v)}
-              style={{ fontSize: "0.7rem", color: MUTED, background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "2px 8px", cursor: "pointer" }}>
-              {showCond ? "Ver menos" : "Ver todos"}
-            </button>
+      {/* ── 🚀 Performance por Conductor ────────────────────────────────────── */}
+      {(data.driverEtapas?.length > 0) && (() => {
+        const drivers = data.driverEtapas;
+        const maxTotal = Math.max(...drivers.map(r => Number(r.total)), 1);
+        const cols = [
+          { key: "avg_asig",   label: "Asig",    thr: 5  },
+          { key: "avg_prep",   label: "Prep",    thr: 25 },
+          { key: "avg_viaje",  label: "Viaje",   thr: 10 },
+          { key: "avg_pickup", label: "Pickup",  thr: 5  },
+          { key: "avg_rep",    label: "Entrega", thr: 12 },
+        ];
+        return (
+          <div style={{ ...card, marginBottom: "1rem", overflowX: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>🚀 Performance por Conductor</h3>
+                <p style={{ margin: "2px 0 0", color: MUTED, fontSize: "0.7rem" }}>
+                  Tiempos promedio por etapa · rojo = excede objetivo
+                </p>
+              </div>
+              <button onClick={() => setShowCond(v => !v)}
+                style={{ fontSize: "0.68rem", color: MUTED, background: "transparent", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "2px 8px", cursor: "pointer" }}>
+                {showCond ? `Ver menos` : `Ver todos (${drivers.length})`}
+              </button>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <th style={{ padding: "5px 8px", textAlign: "left",  color: MUTED, fontWeight: 500 }}>#</th>
+                  <th style={{ padding: "5px 8px", textAlign: "left",  color: MUTED, fontWeight: 500 }}>Conductor</th>
+                  <th style={{ padding: "5px 8px", textAlign: "right", color: MUTED, fontWeight: 500 }}>Pedidos</th>
+                  <th style={{ padding: "5px 8px", textAlign: "right", color: MUTED, fontWeight: 500 }}>% ≤45</th>
+                  <th style={{ padding: "5px 8px", textAlign: "right", color: MUTED, fontWeight: 500 }}>Total avg</th>
+                  {cols.map(c => <th key={c.key} style={{ padding: "5px 8px", textAlign: "right", color: MUTED, fontWeight: 500 }}>{c.label}</th>)}
+                  <th style={{ padding: "5px 8px", color: MUTED, fontWeight: 500 }}>Carga</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(showCond ? drivers : drivers.slice(0, 15)).map((r, i) => {
+                  const pct_ok = parseFloat(r.pct_ok) || 0;
+                  const cOk = pct_ok >= 70 ? GREEN : pct_ok >= 40 ? YELLOW : RED;
+                  const avg = parseFloat(r.avg_entrega) || 0;
+                  return (
+                    <tr key={r.nombre_conductor} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                      <td style={{ padding: "5px 8px", color: MUTED }}>{i + 1}</td>
+                      <td style={{ padding: "5px 8px", color: TEXT, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nombre_conductor}</td>
+                      <td style={{ padding: "5px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
+                      <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cOk }}>{pct_ok}%</td>
+                      <td style={{ padding: "5px 8px", textAlign: "right", color: avg > 45 ? RED : avg > 35 ? YELLOW : GREEN, fontWeight: 600 }}>{fmt1(avg)}</td>
+                      {cols.map(c => {
+                        const v = parseFloat(r[c.key]) || 0;
+                        const col = v > c.thr ? RED : v > c.thr * 0.7 ? ORANGE : MUTED;
+                        return <td key={c.key} style={{ padding: "5px 8px", textAlign: "right", color: col }}>{v > 0 ? fmt1(v) : "—"}</td>;
+                      })}
+                      <td style={{ padding: "5px 8px", width: 80 }}>
+                        <div style={{ background: BORDER, borderRadius: 4, height: 5, overflow: "hidden" }}>
+                          <div style={{ width: `${(Number(r.total) / maxTotal) * 100}%`, height: 5, background: BLUE }} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                {["#","Conductor","Pedidos","% ≤Obj","Avg min","Actividad"].map((h) => (
-                  <th key={h} style={{ padding: "5px 8px", textAlign: h === "Conductor" ? "left" : "right", color: MUTED, fontWeight: 500 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(showCond ? condTop : condTop.slice(0, 8)).map((r, i) => {
-                const p = Number(r.pct_ok) || 0;
-                const c = p >= 70 ? GREEN : p >= 40 ? YELLOW : RED;
-                return (
-                  <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{i + 1}</td>
-                    <td style={{ padding: "6px 8px", color: TEXT }}>{r.nombre_conductor}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ color: c, fontWeight: 700 }}>{p}%</span></td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: Number(r.avg_min) > 45 ? RED : GREEN }}>{fmt1(r.avg_min)}</td>
-                    <td style={{ padding: "6px 8px", width: 100 }}><Bar pct={(Number(r.total) / maxCond) * 100} color={BLUE} height={5} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* ── 🏪 Por Marca / Tienda / Polígono ─────────────────────────────────── */}
+      <SegmentosTabs data={data} />
 
       {/* ── 🚫 Rechazos — detalle completo ──────────────────────────────────── */}
       <div style={{ ...card, marginBottom: "1rem" }}>
@@ -746,6 +779,134 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         <RechazosTab rechazos={rechazos} />
       </div>
 
+    </div>
+  );
+}
+
+// ─── SegmentosTabs: Por Marca / Tienda / Polígono ────────────────────────────
+function SegmentosTabs({ data }) {
+  const [tab, setTab] = useState("marca");
+
+  const porPoligono = data.porPoligono ?? [];
+  const porLocal    = data.porLocal    ?? [];
+  const porMarca    = data.porMarca    ?? [];
+
+  const datasets = {
+    marca:   { rows: porMarca,    nameKey: "marca",   nameLabel: "Marca" },
+    tienda:  { rows: porLocal,    nameKey: "local",   nameLabel: "Tienda / Local" },
+    poligono:{ rows: porPoligono, nameKey: "poligono",nameLabel: "Polígono" },
+  };
+
+  const { rows, nameKey, nameLabel } = datasets[tab];
+  if (!rows.length && tab !== "poligono") return null;
+
+  const fuera = (r) => Number(r.fuera_obj) || (Number(r.total) - Number(r.dentro_obj));
+  const pctOk = (r) => {
+    const t = Number(r.total) || 0;
+    const d = Number(r.dentro_obj) || 0;
+    return t > 0 ? Math.round((d / t) * 100) : 0;
+  };
+  const causaPrincipal = (r) => {
+    const f = fuera(r) || 1;
+    const causas = [
+      { label: "Tienda",    val: Number(r.causa_tienda)     || 0, color: RED    },
+      { label: "Asig",     val: Number(r.causa_asignacion) || 0, color: ORANGE },
+      { label: "Viaje",    val: Number(r.causa_viaje)      || 0, color: YELLOW },
+      { label: "Pickup",   val: Number(r.causa_pickup)     || 0, color: VIOLET },
+      { label: "Entrega",  val: Number(r.causa_reparto)    || 0, color: BLUE   },
+    ];
+    const top = causas.reduce((a, b) => b.val > a.val ? b : a, causas[0]);
+    return { ...top, pct: Math.round((top.val / f) * 100) };
+  };
+
+  const thStyle = { padding: "5px 8px", textAlign: "right", color: MUTED, fontWeight: 500, fontSize: "0.68rem", whiteSpace: "nowrap" };
+  const tdS = (right = true) => ({ padding: "5px 8px", textAlign: right ? "right" : "left", fontSize: "0.7rem" });
+
+  return (
+    <div style={{ ...card, marginBottom: "1rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>🏪 Rendimiento por Segmento</h3>
+          <p style={{ margin: "2px 0 0", color: MUTED, fontSize: "0.7rem" }}>
+            Identifica dónde aplicar mejoras — por marca, tienda o polígono
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {[
+            { key: "marca",    label: "Por Marca" },
+            { key: "tienda",   label: "Por Tienda" },
+            { key: "poligono", label: "Por Polígono" },
+          ].map(({ key, label }) => (
+            <button key={key} onClick={() => setTab(key)} style={{
+              padding: "4px 12px", fontSize: "0.68rem", borderRadius: 6, cursor: "pointer",
+              border: tab === key ? `1px solid ${BLUE}` : `1px solid ${BORDER}`,
+              background: tab === key ? "rgba(59,130,246,0.18)" : "transparent",
+              color: tab === key ? "#93c5fd" : MUTED, fontWeight: tab === key ? 600 : 400,
+            }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p style={{ color: MUTED, fontSize: "0.78rem" }}>Sin datos para este período.</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.7rem" }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                <th style={{ ...thStyle, textAlign: "left" }}>{nameLabel}</th>
+                {tab === "tienda" && <th style={thStyle}>Polígono</th>}
+                <th style={thStyle}>Pedidos</th>
+                <th style={thStyle}>% ≤45</th>
+                <th style={thStyle}>Avg total</th>
+                <th style={thStyle}>Asig</th>
+                <th style={thStyle}>Prep</th>
+                <th style={thStyle}>Viaje</th>
+                <th style={thStyle}>Pickup</th>
+                <th style={thStyle}>Entrega</th>
+                <th style={thStyle}>Causa principal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const ok  = pctOk(r);
+                const cOk = ok >= 70 ? GREEN : ok >= 40 ? YELLOW : RED;
+                const avg = parseFloat(r.avg_min) || 0;
+                const cAvg = avg > 50 ? RED : avg > 45 ? ORANGE : GREEN;
+                const cp  = causaPrincipal(r);
+                const etapaAvgs = [
+                  { v: parseFloat(r.avg_asig)   || 0, thr: 5  },
+                  { v: parseFloat(r.avg_prep)   || 0, thr: 25 },
+                  { v: parseFloat(r.avg_viaje)  || 0, thr: 10 },
+                  { v: parseFloat(r.avg_pickup) || 0, thr: 5  },
+                  { v: parseFloat(r.avg_rep)    || 0, thr: 12 },
+                ];
+                return (
+                  <tr key={i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                    <td style={{ ...tdS(false), color: TEXT, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>
+                      {r[nameKey] ?? "—"}
+                    </td>
+                    {tab === "tienda" && <td style={{ ...tdS(false), color: MUTED, fontSize: "0.65rem" }}>{r.poligono ?? "—"}</td>}
+                    <td style={{ ...tdS(), color: MUTED }}>{Number(r.total).toLocaleString()}</td>
+                    <td style={{ ...tdS() }}><span style={{ color: cOk, fontWeight: 700 }}>{ok}%</span></td>
+                    <td style={{ ...tdS(), color: cAvg, fontWeight: 600 }}>{fmt1(avg)}</td>
+                    {etapaAvgs.map((e, j) => (
+                      <td key={j} style={{ ...tdS(), color: e.v > e.thr ? RED : e.v > e.thr * 0.7 ? ORANGE : MUTED }}>
+                        {e.v > 0 ? fmt1(e.v) : "—"}
+                      </td>
+                    ))}
+                    <td style={{ ...tdS() }}>
+                      <span style={{ color: cp.color, fontWeight: 600, fontSize: "0.65rem" }}>
+                        {cp.label} {cp.pct > 0 ? `(${cp.pct}%)` : ""}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

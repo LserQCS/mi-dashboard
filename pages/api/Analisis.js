@@ -15,6 +15,7 @@ import {
   getTendenciaEtapas,
   getEtapasPorHora,
   getDriverEtapas,
+  getKPIsPorLocal,
 } from "../../lib/bigquery";
 
 // ─── Filtro ciudad → BigQuery ────────────────────────────────────────────────
@@ -515,6 +516,48 @@ async function fetchTurnosData() {
   return { brecha, turnosDetalle };
 }
 
+// ─── Agrupación por marca (derivada de LOCAL_TO_MARCA inverso) ────────────────
+function buildPorMarca(porLocal) {
+  const LOCAL_TO_MARCA = {};
+  for (const [key, local] of Object.entries(MARCA_TIENDA_TO_LOCAL)) {
+    const marca = key.split("|")[0].trim();
+    if (!LOCAL_TO_MARCA[local]) LOCAL_TO_MARCA[local] = marca;
+  }
+
+  const map = {};
+  for (const r of porLocal) {
+    const marca = LOCAL_TO_MARCA[r.local]
+      || (r.local?.includes(" - ") ? r.local.split(" - ")[0].trim() : r.local?.split(" ")[0] ?? "Otros");
+    if (!map[marca]) {
+      map[marca] = { marca, total: 0, dentro_obj: 0, fuera_obj: 0, sumMin: 0, sumPrep: 0, sumAsig: 0, sumViaje: 0, sumPickup: 0, sumRep: 0, causa_tienda: 0, causa_asignacion: 0, causa_viaje: 0, causa_pickup: 0, causa_reparto: 0 };
+    }
+    const m = map[marca];
+    const t = Number(r.total) || 0;
+    m.total         += t;
+    m.dentro_obj    += Number(r.dentro_obj) || 0;
+    m.fuera_obj     += Number(r.fuera_obj)  || 0;
+    m.sumMin        += (parseFloat(r.avg_min)    || 0) * t;
+    m.sumPrep       += (parseFloat(r.avg_prep)   || 0) * t;
+    m.sumAsig       += (parseFloat(r.avg_asig)   || 0) * t;
+    m.sumViaje      += (parseFloat(r.avg_viaje)  || 0) * t;
+    m.sumPickup     += (parseFloat(r.avg_pickup) || 0) * t;
+    m.sumRep        += (parseFloat(r.avg_rep)    || 0) * t;
+    m.causa_tienda      += Number(r.causa_tienda)      || 0;
+    m.causa_asignacion  += Number(r.causa_asignacion)  || 0;
+    m.causa_viaje       += Number(r.causa_viaje)       || 0;
+    m.causa_pickup      += Number(r.causa_pickup)      || 0;
+    m.causa_reparto     += Number(r.causa_reparto)     || 0;
+  }
+  const r1 = (n, d) => d > 0 ? Math.round(n / d * 10) / 10 : 0;
+  return Object.values(map).map(m => ({
+    marca: m.marca, total: m.total, dentro_obj: m.dentro_obj, fuera_obj: m.fuera_obj,
+    avg_min: r1(m.sumMin, m.total), avg_prep: r1(m.sumPrep, m.total), avg_asig: r1(m.sumAsig, m.total),
+    avg_viaje: r1(m.sumViaje, m.total), avg_pickup: r1(m.sumPickup, m.total), avg_rep: r1(m.sumRep, m.total),
+    causa_tienda: m.causa_tienda, causa_asignacion: m.causa_asignacion, causa_viaje: m.causa_viaje,
+    causa_pickup: m.causa_pickup, causa_reparto: m.causa_reparto,
+  })).sort((a, b) => b.total - a.total);
+}
+
 // ─── Rango de fechas por defecto ─────────────────────────────────────────────
 function defaultRange(desde, hasta) {
   const today = new Date();
@@ -544,7 +587,7 @@ export default async function handler(req, res) {
   const bqCity = { ...range, extraWhere: extraWhereCity };
 
   const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_turnos, r_locales, r_pedidos,
-         r_tendAsig, r_asigHora, r_driverAsig] =
+         r_tendAsig, r_asigHora, r_driverAsig, r_local] =
     await Promise.allSettled([
       getKPIs(bqFull),
       getCumplimientoPorProveedor(bqCity),
@@ -557,6 +600,7 @@ export default async function handler(req, res) {
       getTendenciaEtapas(bqFull),
       getEtapasPorHora(bqFull),
       getDriverEtapas(bqFull),
+      getKPIsPorLocal(bqFull),
     ]);
 
   const safe = (r, fallback) => (r.status === "fulfilled" ? r.value : fallback);
@@ -572,6 +616,8 @@ export default async function handler(req, res) {
   const tendEtapas    = safe(r_tendAsig,   []);
   const etapasPorHora = safe(r_asigHora,   []);
   const driverEtapas  = safe(r_driverAsig, []);
+  const porLocal      = safe(r_local,      []);
+  const porMarca      = buildPorMarca(porLocal);
 
   const flatRow = (row) => {
     const out = {};
@@ -594,6 +640,7 @@ export default async function handler(req, res) {
   if (r_tendAsig.status   === "rejected") errors.push({ source: "tendEtapas",  msg: r_tendAsig.reason?.message });
   if (r_asigHora.status   === "rejected") errors.push({ source: "etapasPorHora", msg: r_asigHora.reason?.message });
   if (r_driverAsig.status === "rejected") errors.push({ source: "driverEtapas",  msg: r_driverAsig.reason?.message });
+  if (r_local.status      === "rejected") errors.push({ source: "porLocal",       msg: r_local.reason?.message });
   if (errors.length) console.error("[Analisis API] query errors:", JSON.stringify(errors));
 
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
@@ -601,6 +648,7 @@ export default async function handler(req, res) {
     kpis, proveedor, porPoligono, porHora, conductores,
     brecha, locales, pedidos, rechazos,
     tendEtapas, etapasPorHora, driverEtapas,
+    porLocal, porMarca,
     range, errors,
   });
 }
