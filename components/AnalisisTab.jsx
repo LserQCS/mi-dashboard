@@ -2,7 +2,8 @@
  * AnalisisTab — Análisis Operacional embebido como componente.
  * Recibe desde/hasta como props y hace su propio fetch a /api/Analisis.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import RechazosTab from "./RechazosTab";
 
 // ─── Paleta (dark) ────────────────────────────────────────────────────────────
 const BG     = "#0f172a";
@@ -188,6 +189,7 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   const selSemanas = extSemanas ?? ALL_SEMANAS_BRECHA;
   const [showCond, setShowCond] = useState(false);
   const [selLocal, setSelLocal] = useState("Todos");
+  const [activeTab, setActiveTab] = useState("analisis"); // "analisis" | "rechazos"
 
   // Reset local cuando cambia ciudad
   useEffect(() => { setSelLocal("Todos"); }, [selCiudad]);
@@ -257,8 +259,34 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
     { label: "📦 Entrega a cliente",           avg: Number(k.avg_reparto)     || 0, benchmark: 12 },
   ];
 
+  const rechazos = data.rechazos ?? [];
+
   return (
     <div style={{ paddingTop: "1rem" }}>
+
+      {/* ── Tab switcher ─────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 4, marginBottom: "1rem", borderBottom: `1px solid ${BORDER}` }}>
+        {[
+          { key: "analisis", label: "📈 Análisis" },
+          { key: "rechazos", label: `🚫 Rechazos${rechazos.length ? ` (${rechazos.length})` : ""}` },
+        ].map(({ key, label }) => (
+          <button key={key} onClick={() => setActiveTab(key)} style={{
+            padding: "6px 16px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer",
+            border: "none", borderBottom: activeTab === key ? `2px solid ${BLUE}` : "2px solid transparent",
+            background: "transparent", color: activeTab === key ? TEXT : MUTED,
+            marginBottom: "-1px",
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── Rechazos tab ─────────────────────────────────────────────────── */}
+      {activeTab === "rechazos" && (
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "1.25rem 1.5rem" }}>
+          <RechazosTab rechazos={rechazos} />
+        </div>
+      )}
+
+      {activeTab === "analisis" && <>
 
       {/* ── Filtro Local ──────────────────────────────────────────────────── */}
       {locales.length > 0 && (
@@ -505,6 +533,8 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           </table>
         </div>
       )}
+
+      </> /* fin activeTab === "analisis" */}
 
     </div>
   );
