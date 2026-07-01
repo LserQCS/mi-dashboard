@@ -178,4 +178,11 @@ export default function RechazosTab({ rechazos = [] }) {
               );
             })}
           </tbody>
-      
+        </table>
+        {filtered.length === 0 && (
+          <div style={{ padding: "20px", textAlign: "center", color: MUTED }}>Sin resultados para ese filtro.</div>
+        )}
+      </div>
+    </div>
+  );
+}
