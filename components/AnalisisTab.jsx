@@ -80,6 +80,15 @@ function EtapaRow({ label, avg, benchmark }) {
 
 const ALL_SEMANAS_BRECHA = [21, 22, 23, 24];
 
+// ─── Config por etapa ─────────────────────────────────────────────────────────
+const ETAPAS_CFG = [
+  { key: "asig",   label: "🔄 Asignación driver",    avgKey: "avg_asig",   pctKey: "pct_asig",   kpiCausa: "causa_asignacion", threshold: 5,  color: "#f97316" },
+  { key: "prep",   label: "🏪 Preparación en tienda", avgKey: "avg_prep",   pctKey: "pct_prep",   kpiCausa: "causa_tienda",     threshold: 25, color: "#ef4444" },
+  { key: "viaje",  label: "🛣️ Viaje al local",        avgKey: "avg_viaje",  pctKey: "pct_viaje",  kpiCausa: "causa_viaje",      threshold: 10, color: "#eab308" },
+  { key: "pickup", label: "📦 Entrega al driver",     avgKey: "avg_pickup", pctKey: "pct_pickup", kpiCausa: "causa_pickup",     threshold: 5,  color: "#a78bfa" },
+  { key: "rep",    label: "🛵 Entrega a cliente",     avgKey: "avg_rep",    pctKey: "pct_rep",    kpiCausa: "causa_reparto",    threshold: 12, color: "#3b82f6" },
+];
+
 
 // ─── Tabla detalle de pedidos ─────────────────────────────────────────────────
 function PedidosTable({ pedidos }) {
@@ -392,117 +401,141 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         </div>
       </div>
 
-      {/* ── ⚡ Análisis de Asignación ───────────────────────────────────────── */}
-      {(data.tendAsig?.length > 0 || data.driverAsig?.length > 0 || data.asigPorHora?.length > 0) && (
-        <div style={{ ...card, marginBottom: "1rem" }}>
-          <h3 style={{ margin: "0 0 0.25rem", fontSize: "0.95rem", fontWeight: 700 }}>
-            ⚡ Análisis de Asignación
-          </h3>
-          <p style={{ margin: "0 0 0.75rem", color: MUTED, fontSize: "0.73rem" }}>
-            La etapa con más impacto en demoras — cuándo ocurre, en qué drivers y si mejora o empeora
-          </p>
+      {/* ── ⚡ Análisis por Etapa ─────────────────────────────────────────────── */}
+      {(data.tendEtapas?.length > 0 || data.driverEtapas?.length > 0) && ETAPAS_CFG.map(({ key, label, avgKey, pctKey, kpiCausa, threshold, color: etapaColor }) => {
+        const tendRows = data.tendEtapas ?? [];
+        const drvRows  = (data.driverEtapas ?? [])
+          .filter(r => parseFloat(r[avgKey]) > 0)
+          .sort((a, b) => parseFloat(b[avgKey]) - parseFloat(a[avgKey]))
+          .slice(0, 15);
+        const horaMap = {};
+        for (const r of (data.etapasPorHora ?? [])) horaMap[Number(r.hora)] = r;
+        const horaFull = Array.from({ length: 24 }, (_, i) => horaMap[i] ?? { hora: i, [avgKey]: 0, total: 0 });
+        const maxHora  = Math.max(...horaFull.map(r => parseFloat(r[avgKey]) || 0), 1);
+        const maxDrv   = Math.max(...drvRows.map(r => parseFloat(r[avgKey]) || 0), 1);
+        // Weighted avg across all days
+        const avgGlobal = (() => {
+          const totalW = tendRows.reduce((s, r) => s + (Number(r.total) || 0), 0);
+          const sumW   = tendRows.reduce((s, r) => s + (parseFloat(r[avgKey]) || 0) * (Number(r.total) || 0), 0);
+          return totalW > 0 ? sumW / totalW : 0;
+        })();
+        const causaPct  = totalFuera > 0 ? pct(Number(k[kpiCausa]), totalFuera) : 0;
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "1rem" }}>
-
-            {/* Tendencia diaria */}
-            {data.tendAsig?.length > 0 && (
+        return (
+          <div key={key} style={{ ...card, marginBottom: "1rem", borderTop: `3px solid ${etapaColor}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.6rem", flexWrap: "wrap", gap: 8 }}>
               <div>
-                <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
-                  % pedidos con asig &gt;5 min por día
+                <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>{label}</h3>
+                <p style={{ margin: "2px 0 0", color: MUTED, fontSize: "0.72rem" }}>
+                  objetivo ≤{threshold} min · avg global:{" "}
+                  <span style={{ color: avgGlobal > threshold ? RED : avgGlobal > threshold * 0.7 ? ORANGE : GREEN, fontWeight: 700 }}>{fmt1(avgGlobal)} min</span>
+                </p>
+              </div>
+              {causaPct > 0 && (
+                <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "4px 12px", textAlign: "center" }}>
+                  <div style={{ color: etapaColor, fontWeight: 700, fontSize: "1.1rem" }}>{causaPct}%</div>
+                  <div style={{ color: MUTED, fontSize: "0.6rem" }}>de tardíos</div>
                 </div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80 }}>
-                  {data.tendAsig.map((r) => {
-                    const pctL = parseFloat(r.pct_asig_lenta) || 0;
-                    const barH = Math.max(4, Math.round((pctL / 100) * 76));
-                    const col = pctL >= 50 ? RED : pctL >= 25 ? ORANGE : pctL >= 10 ? YELLOW : GREEN;
-                    const label = String(r.fecha ?? "").slice(5); // MM-DD
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: "1rem" }}>
+
+              {/* Gráfico 1: % etapa lenta por día */}
+              <div>
+                <div style={{ color: MUTED, fontSize: "0.67rem", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  % pedidos &gt;{threshold} min en esta etapa — por día
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 130 }}>
+                  {tendRows.map(r => {
+                    const v = parseFloat(r[pctKey]) || 0;
+                    const barH = v === 0 ? 2 : Math.max(4, Math.round((v / 100) * 126));
+                    const col = v >= 60 ? RED : v >= 30 ? ORANGE : v >= 10 ? YELLOW : GREEN;
                     return (
-                      <div key={r.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                        <div title={`${r.fecha}: ${pctL}% asig lenta (avg ${r.avg_asig} min)`}
-                          style={{ width: "100%", height: barH, background: col, borderRadius: "3px 3px 0 0", cursor: "default" }} />
-                        <span style={{ fontSize: "0.5rem", color: MUTED, writingMode: "vertical-rl", transform: "rotate(180deg)", lineHeight: 1 }}>{label}</span>
+                      <div key={r.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <div style={{ flex: 1, display: "flex", alignItems: "flex-end", width: "100%", height: 130 }}>
+                          <div title={`${String(r.fecha).slice(5)}: ${v}% · avg ${r[avgKey]} min`}
+                            style={{ width: "100%", height: barH, background: col, borderRadius: "3px 3px 0 0" }} />
+                        </div>
+                        <span style={{ fontSize: "0.48rem", color: MUTED, marginTop: 2, writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+                          {String(r.fecha ?? "").slice(5)}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
-                <div style={{ fontSize: "0.62rem", color: MUTED, marginTop: 4 }}>
+                <div style={{ fontSize: "0.61rem", color: MUTED, marginTop: 14 }}>
                   <span style={{ color: GREEN }}>■</span> &lt;10% &nbsp;
-                  <span style={{ color: YELLOW }}>■</span> 10-25% &nbsp;
-                  <span style={{ color: ORANGE }}>■</span> 25-50% &nbsp;
-                  <span style={{ color: RED }}>■</span> &gt;50%
+                  <span style={{ color: YELLOW }}>■</span> 10-30% &nbsp;
+                  <span style={{ color: ORANGE }}>■</span> 30-60% &nbsp;
+                  <span style={{ color: RED }}>■</span> &gt;60%
                 </div>
               </div>
-            )}
 
-            {/* Por hora */}
-            {data.asigPorHora?.length > 0 && (
+              {/* Gráfico 2: avg por hora — eje X alineado */}
               <div>
-                <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
-                  Avg asignación por hora del día (min)
+                <div style={{ color: MUTED, fontSize: "0.67rem", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  Avg minutos en esta etapa — por hora del día
                 </div>
-                {(() => {
-                  const map = {};
-                  for (const r of data.asigPorHora) map[Number(r.hora)] = r;
-                  const full = Array.from({ length: 24 }, (_, i) => map[i] ?? { hora: i, avg_asig: 0, total: 0 });
-                  const maxA = Math.max(...full.map(r => parseFloat(r.avg_asig) || 0), 1);
-                  return (
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80 }}>
-                      {full.map((r) => {
-                        const a = parseFloat(r.avg_asig) || 0;
-                        const barH = a === 0 ? 0 : Math.max(3, Math.round((a / maxA) * 76));
-                        const col = a > 10 ? RED : a > 5 ? ORANGE : a > 0 ? GREEN : BORDER;
-                        return (
-                          <div key={r.hora} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                            <div title={`${r.hora}h: ${a} min avg asig`}
-                              style={{ width: "100%", height: barH, background: col, borderRadius: "2px 2px 0 0", cursor: "default", minHeight: a > 0 ? 3 : 0 }} />
-                            {r.hora % 3 === 0 && <span style={{ fontSize: "0.5rem", color: MUTED }}>{r.hora}</span>}
-                          </div>
-                        );
-                      })}
+                <div style={{ display: "flex", gap: 2, height: 130, alignItems: "flex-end" }}>
+                  {horaFull.map(r => {
+                    const a = parseFloat(r[avgKey]) || 0;
+                    const barH = a === 0 ? 0 : Math.max(3, Math.round((a / maxHora) * 126));
+                    const col = a > threshold ? RED : a > threshold * 0.6 ? ORANGE : a > 0 ? GREEN : "transparent";
+                    return (
+                      <div key={r.hora} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
+                        <div title={`${r.hora}h: ${a} min`}
+                          style={{ width: "100%", height: barH, background: col, borderRadius: "2px 2px 0 0" }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Eje X alineado */}
+                <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
+                  {horaFull.map(r => (
+                    <div key={r.hora} style={{ flex: 1, textAlign: "center", height: 12 }}>
+                      {r.hora % 3 === 0 && <span style={{ fontSize: "0.5rem", color: MUTED }}>{r.hora}</span>}
                     </div>
-                  );
-                })()}
-                <div style={{ fontSize: "0.62rem", color: MUTED, marginTop: 4 }}>
-                  <span style={{ color: GREEN }}>■</span> ≤5 min &nbsp;
-                  <span style={{ color: ORANGE }}>■</span> 5-10 &nbsp;
-                  <span style={{ color: RED }}>■</span> &gt;10 min
+                  ))}
+                </div>
+                <div style={{ fontSize: "0.61rem", color: MUTED, marginTop: 2 }}>
+                  <span style={{ color: GREEN }}>■</span> OK &nbsp;
+                  <span style={{ color: ORANGE }}>■</span> Cerca del límite &nbsp;
+                  <span style={{ color: RED }}>■</span> Excede {threshold} min
                 </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Drivers con asig más lenta */}
-          {data.driverAsig?.length > 0 && (
-            <>
-              <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
-                Drivers por tiempo de asignación (mayor a menor)
-              </div>
+            {/* Tabla de drivers */}
+            {drvRows.length > 0 && (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
+                <div style={{ color: MUTED, fontSize: "0.67rem", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  Drivers con mayor tiempo en esta etapa
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                      {["Driver","Pedidos","Avg asig","% Asig >5","% Cumpl ≤45","Barra asig"].map((h) => (
+                      {["Driver", "Pedidos", `Avg (min)`, `% >${threshold}min`, "% OK ≤45", "Barra"].map(h => (
                         <th key={h} style={{ padding: "5px 8px", textAlign: h === "Driver" ? "left" : "right", color: MUTED, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {data.driverAsig.slice(0, 15).map((r, i) => {
-                      const avg = parseFloat(r.avg_asig) || 0;
-                      const pctL = parseFloat(r.pct_asig_lenta) || 0;
-                      const pctK = parseFloat(r.pct_ok) || 0;
-                      const colA = avg > 10 ? RED : avg > 5 ? ORANGE : GREEN;
-                      const maxAsig = Math.max(...data.driverAsig.map(x => parseFloat(x.avg_asig) || 0), 1);
+                    {drvRows.map((r, i) => {
+                      const avg  = parseFloat(r[avgKey])  || 0;
+                      const pctL = parseFloat(r[pctKey])  || 0;
+                      const pctK = parseFloat(r.pct_ok)   || 0;
+                      const colA = avg > threshold ? RED : avg > threshold * 0.7 ? ORANGE : GREEN;
                       return (
                         <tr key={r.nombre_conductor} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
                           <td style={{ padding: "5px 8px", color: TEXT }}>{r.nombre_conductor}</td>
                           <td style={{ padding: "5px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: colA }}>{avg} min</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: colA }}>{avg}</td>
                           <td style={{ padding: "5px 8px", textAlign: "right", color: pctL >= 50 ? RED : pctL >= 25 ? ORANGE : YELLOW }}>{pctL}%</td>
                           <td style={{ padding: "5px 8px", textAlign: "right", color: pctK >= 70 ? GREEN : pctK >= 40 ? YELLOW : RED }}>{pctK}%</td>
-                          <td style={{ padding: "5px 8px", width: 100 }}>
+                          <td style={{ padding: "5px 8px", width: 90 }}>
                             <div style={{ background: BORDER, borderRadius: 4, height: 6, overflow: "hidden" }}>
-                              <div style={{ width: `${Math.min(100, (avg / maxAsig) * 100)}%`, height: 6, background: colA, borderRadius: 4 }} />
+                              <div style={{ width: `${Math.min(100, (avg / maxDrv) * 100)}%`, height: 6, background: colA }} />
                             </div>
                           </td>
                         </tr>
@@ -511,10 +544,10 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
                   </tbody>
                 </table>
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })}
 
       {/* ── 🚫 Rechazos por Driver ──────────────────────────────────────────── */}
       {rechazos.length > 0 && (
