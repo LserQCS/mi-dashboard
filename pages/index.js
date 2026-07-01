@@ -184,7 +184,7 @@ export default function Dashboard() {
   const [applied, setApplied] = useState({ desde: peruDate(-13), hasta: peruDate(0) });
 
   // ── Tabs ────────────────────────────────────────────────────────────────────
-  const [mainTab, setMainTab] = useState("disponibilidad");
+  const [mainTab, setMainTab] = useState("analisis");
 
   // ── Filtros del tareo (GSheets) ─────────────────────────────────────────────
   const [selSemanas,  setSelSemanas]  = useState([]);
@@ -605,3 +605,4 @@ export default function Dashboard() {
     </>
   );
 }
+      
