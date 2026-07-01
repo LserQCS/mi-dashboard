@@ -524,7 +524,7 @@ function buildPorMarca(porLocal) {
 
   const normalizeMarca = (m) => {
     if (!m) return "Otros";
-    if (m.toUpperCase() === "MARIA ALMENARA" || m === "MM") return "Maria Almenara";
+    if (m.toUpperCase() === "MARIA ALMENARA" || m === "MM" || m === "SIL") return "Maria Almenara";
     return m;
   };
 
@@ -583,25 +583,37 @@ export default async function handler(req, res) {
 
   const range  = defaultRange(req.query.desde, req.query.hasta);
   const ciudad = req.query.ciudad ?? "Todos";
-  const local  = req.query.local  ?? "Todos";
-  const marca  = req.query.marca  ?? "Todos";
+
+  // Multi-value filters (comma-separated)
+  const splitParam = (p) => (p ? p.split(",").map(s => s.trim()).filter(Boolean) : []);
+  const selPoligonos = splitParam(req.query.poligono);
+  const selMarcas    = splitParam(req.query.marcas);
+  const selLocales   = splitParam(req.query.locales);
 
   const extraWhereCity = buildExtraWhere(ciudad);
 
-  // localWhere: specific tienda (local param) OR all tiendas of a marca
+  // Polígono filter
+  let poligonoWhere = "";
+  if (selPoligonos.length > 0) {
+    const list = selPoligonos.map(p => `'${p.replace(/'/g, "\\'")}'`).join(", ");
+    poligonoWhere = `AND TRIM(IFNULL(lp.poligono,'')) IN (${list})`;
+  }
+
+  // Local/marca filter
   let localWhere = "";
-  if (local && local !== "Todos") {
-    localWhere = `AND TRIM(IFNULL(\`local\`,'')) = '${local.replace(/'/g, "\\'")}'`;
-  } else if (marca && marca !== "Todos") {
-    const localsForMarca = Object.entries(MARCA_TIENDA_TO_LOCAL)
-      .filter(([key]) => key.split("|")[0].trim() === marca)
+  if (selLocales.length > 0) {
+    const list = selLocales.map(l => `'${l.replace(/'/g, "\\'")}'`).join(", ");
+    localWhere = `AND TRIM(IFNULL(\`local\`,'')) IN (${list})`;
+  } else if (selMarcas.length > 0) {
+    const allLocals = Object.entries(MARCA_TIENDA_TO_LOCAL)
+      .filter(([key]) => selMarcas.includes(key.split("|")[0].trim()))
       .map(([, loc]) => `'${loc.replace(/'/g, "\\'")}'`);
-    if (localsForMarca.length > 0) {
-      localWhere = `AND TRIM(IFNULL(\`local\`,'')) IN (${localsForMarca.join(", ")})`;
+    if (allLocals.length > 0) {
+      localWhere = `AND TRIM(IFNULL(\`local\`,'')) IN (${allLocals.join(", ")})`;
     }
   }
 
-  const extraWhere = [extraWhereCity, localWhere].filter(Boolean).join("\n      ");
+  const extraWhere = [extraWhereCity, poligonoWhere, localWhere].filter(Boolean).join("\n      ");
   const bqFull = { ...range, extraWhere };
   const bqCity = { ...range, extraWhere: extraWhereCity };
 
@@ -669,8 +681,9 @@ export default async function handler(req, res) {
     if (!localesSet.has(loc)) continue;
     const [m, t] = key.split("|");
     const mTrim = m.trim(), tTrim = t?.trim() ?? "";
+    const pol   = LOCAL_TO_POL[loc] ?? "";
     if (!marcaMapRaw[mTrim]) marcaMapRaw[mTrim] = [];
-    marcaMapRaw[mTrim].push({ tienda: tTrim, local: loc });
+    marcaMapRaw[mTrim].push({ tienda: tTrim, local: loc, poligono: pol });
   }
   const marcaMap = Object.entries(marcaMapRaw)
     .sort(([a], [b]) => a.localeCompare(b))

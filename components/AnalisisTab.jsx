@@ -191,38 +191,160 @@ function PedidosTable({ pedidos }) {
   );
 }
 
+// ─── MultiSelect dropdown ─────────────────────────────────────────────────────
+function MultiSelect({ label, options, selected, onChange, getLabel = (o) => o, getValue = (o) => o, placeholder = "Todos" }) {
+  const [open, setOpen] = useState(false);
+  const ref = { current: null };
+
+  // Close on outside click via bubbling
+  const toggle = () => setOpen((v) => !v);
+  const selectAll = () => onChange([]);
+  const toggleOpt = (val) =>
+    onChange(selected.includes(val) ? selected.filter((s) => s !== val) : [...selected, val]);
+
+  const displayLabel = selected.length === 0
+    ? <span style={{ color: MUTED }}>{placeholder}</span>
+    : <span style={{ color: TEXT }}>{selected.length === 1
+        ? (options.find((o) => getValue(o) === selected[0]) ? getLabel(options.find((o) => getValue(o) === selected[0])) : selected[0])
+        : `${selected.length} selec.`}</span>;
+
+  return (
+    <div style={{ position: "relative" }} onMouseLeave={() => setOpen(false)}>
+      <button onClick={toggle} style={{
+        display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
+        background: selected.length > 0 ? "rgba(59,130,246,0.15)" : CARD,
+        border: `1px solid ${selected.length > 0 ? BLUE : BORDER}`,
+        borderRadius: 6, fontSize: "0.73rem", cursor: "pointer", minWidth: 130, justifyContent: "space-between",
+      }}>
+        <span style={{ fontSize: "0.65rem", color: MUTED, marginRight: 2 }}>{label}</span>
+        {displayLabel}
+        <span style={{ color: MUTED, fontSize: "0.6rem", marginLeft: 2 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 300,
+          background: "#1a2540", border: `1px solid ${BORDER}`, borderRadius: 8,
+          minWidth: 200, maxHeight: 260, overflowY: "auto",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        }}>
+          <div
+            onClick={selectAll}
+            style={{ padding: "7px 12px", fontSize: "0.7rem", color: selected.length === 0 ? BLUE : MUTED, cursor: "pointer", borderBottom: `1px solid ${BORDER}`, fontWeight: 600 }}
+          >
+            ✓ Todos
+          </div>
+          {options.map((opt) => {
+            const val = getValue(opt);
+            const lbl = getLabel(opt);
+            const checked = selected.includes(val);
+            return (
+              <div key={val} onClick={() => toggleOpt(val)} style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "6px 12px",
+                cursor: "pointer", fontSize: "0.72rem", color: checked ? TEXT : MUTED,
+                background: checked ? "rgba(59,130,246,0.08)" : "transparent",
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                  border: `1px solid ${checked ? BLUE : BORDER}`,
+                  background: checked ? BLUE : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {checked && <span style={{ color: "#fff", fontSize: "0.55rem", lineHeight: 1 }}>✓</span>}
+                </div>
+                {lbl}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selCiudad = "Todos" }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const selSemanas = extSemanas ?? ALL_SEMANAS_BRECHA;
   const [showCond, setShowCond] = useState(false);
-  const [selMarca, setSelMarca] = useState("Todos");
-  const [selTienda, setSelTienda] = useState("Todos");
 
-  // Reset tienda cuando cambia marca o ciudad
-  useEffect(() => { setSelTienda("Todos"); }, [selMarca]);
-  useEffect(() => { setSelMarca("Todos"); setSelTienda("Todos"); }, [selCiudad]);
+  // Pending = lo que el usuario está seleccionando (no dispara fetch)
+  const [pendingPols,    setPendingPols]    = useState([]);
+  const [pendingMarcas,  setPendingMarcas]  = useState([]);
+  const [pendingTiendas, setPendingTiendas] = useState([]);
 
+  // Applied = lo que se mandó a la API (dispara fetch)
+  const [appliedPols,    setAppliedPols]    = useState([]);
+  const [appliedMarcas,  setAppliedMarcas]  = useState([]);
+  const [appliedTiendas, setAppliedTiendas] = useState([]);
+
+  const hasChanges =
+    JSON.stringify(pendingPols)    !== JSON.stringify(appliedPols)    ||
+    JSON.stringify(pendingMarcas)  !== JSON.stringify(appliedMarcas)  ||
+    JSON.stringify(pendingTiendas) !== JSON.stringify(appliedTiendas);
+
+  const applyFilters = () => {
+    setAppliedPols([...pendingPols]);
+    setAppliedMarcas([...pendingMarcas]);
+    setAppliedTiendas([...pendingTiendas]);
+  };
+
+  const clearFilters = () => {
+    setPendingPols([]); setPendingMarcas([]); setPendingTiendas([]);
+    setAppliedPols([]); setAppliedMarcas([]); setAppliedTiendas([]);
+  };
+
+  // Reset filtros cuando cambia ciudad
+  useEffect(() => { clearFilters(); }, [selCiudad]); // eslint-disable-line
+
+  // Fetch — solo cuando applied* cambia
   useEffect(() => {
     if (!desde || !hasta) return;
     setLoading(true); setError(null);
     const qs = new URLSearchParams({ desde, hasta });
-    if (selCiudad  !== "Todos") qs.set("ciudad", selCiudad);
-    if (selTienda  !== "Todos") qs.set("local",  selTienda);
-    else if (selMarca !== "Todos") qs.set("marca", selMarca);
+    if (selCiudad !== "Todos")         qs.set("ciudad",   selCiudad);
+    if (appliedPols.length > 0)        qs.set("poligono", appliedPols.join(","));
+    if (appliedTiendas.length > 0)     qs.set("locales",  appliedTiendas.join(","));
+    else if (appliedMarcas.length > 0) qs.set("marcas",   appliedMarcas.join(","));
     fetch(`/api/Analisis?${qs.toString()}`)
       .then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [desde, hasta, selCiudad, selMarca, selTienda]);
+  }, [desde, hasta, selCiudad, appliedPols, appliedMarcas, appliedTiendas]); // eslint-disable-line
 
   if (loading) return <div style={{ textAlign: "center", padding: "3rem", color: MUTED }}>Cargando análisis…</div>;
   if (error)   return <div style={{ color: RED, padding: "1rem" }}>Error: {error}</div>;
   if (!data)   return null;
 
-  const marcaMap = data.marcaMap ?? [];
+  const marcaMap = data?.marcaMap ?? [];
+
+  // Cascading options derived from marcaMap
+  const allPoligonos = useMemo(() =>
+    [...new Set(marcaMap.flatMap((m) => m.tiendas.map((t) => t.poligono).filter(Boolean)))].sort(),
+    [marcaMap]);
+
+  const availableMarcas = useMemo(() => {
+    if (pendingPols.length === 0) return marcaMap.map((m) => m.marca);
+    return marcaMap.filter((m) => m.tiendas.some((t) => pendingPols.includes(t.poligono))).map((m) => m.marca);
+  }, [marcaMap, pendingPols]);
+
+  const availableTiendas = useMemo(() => {
+    const marcasFiltro = pendingMarcas.length > 0 ? pendingMarcas : availableMarcas;
+    return marcaMap
+      .filter((m) => marcasFiltro.includes(m.marca))
+      .flatMap((m) => m.tiendas.filter((t) => pendingPols.length === 0 || pendingPols.includes(t.poligono)))
+      .sort((a, b) => a.tienda.localeCompare(b.tienda));
+  }, [marcaMap, pendingMarcas, pendingPols, availableMarcas]);
+
+  // Auto-deselect options that are no longer available after cascade
+  useEffect(() => {
+    setPendingMarcas((prev) => prev.filter((m) => availableMarcas.includes(m)));
+  }, [JSON.stringify(availableMarcas)]); // eslint-disable-line
+  useEffect(() => {
+    const locSet = new Set(availableTiendas.map((t) => t.local));
+    setPendingTiendas((prev) => prev.filter((l) => locSet.has(l)));
+  }, [JSON.stringify(availableTiendas)]); // eslint-disable-line
 
   const k           = data.kpis ?? {};
   const totalPed    = Number(k.total_pedidos) || 0;
@@ -285,55 +407,58 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         </div>
       )}
 
-      {/* ── Filtro Marca / Tienda ────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
-        <span style={{ color: MUTED, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Filtrar por</span>
+      {/* ── Filtros: Polígono / Marca / Tienda ──────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.75rem", flexWrap: "wrap" }}>
+        <span style={{ color: MUTED, fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 2 }}>Filtrar</span>
 
-        {/* Marca select */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ color: MUTED, fontSize: "0.7rem" }}>Marca</span>
-          <select
-            value={selMarca}
-            onChange={(e) => setSelMarca(e.target.value)}
-            style={{ background: CARD, border: `1px solid ${BORDER}`, color: selMarca !== "Todos" ? TEXT : MUTED, borderRadius: 6, padding: "4px 8px", fontSize: "0.73rem", cursor: "pointer", minWidth: 140 }}
-          >
-            <option value="Todos">Todas las marcas</option>
-            {marcaMap.map(({ marca }) => (
-              <option key={marca} value={marca}>{marca}</option>
-            ))}
-          </select>
-        </div>
+        <MultiSelect
+          label="Polígono"
+          options={allPoligonos}
+          selected={pendingPols}
+          onChange={setPendingPols}
+          placeholder="Todos los polígonos"
+        />
 
-        {/* Tienda select — solo aparece si hay una marca seleccionada */}
-        {selMarca !== "Todos" && (() => {
-          const tiendas = marcaMap.find((m) => m.marca === selMarca)?.tiendas ?? [];
-          return tiendas.length > 1 ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ color: MUTED, fontSize: "0.7rem" }}>Tienda</span>
-              <select
-                value={selTienda}
-                onChange={(e) => setSelTienda(e.target.value)}
-                style={{ background: CARD, border: `1px solid ${BLUE}`, color: selTienda !== "Todos" ? TEXT : MUTED, borderRadius: 6, padding: "4px 8px", fontSize: "0.73rem", cursor: "pointer", minWidth: 140 }}
-              >
-                <option value="Todos">Todas las tiendas</option>
-                {tiendas.map(({ tienda, local }) => (
-                  <option key={local} value={local}>{tienda}</option>
-                ))}
-              </select>
-            </div>
-          ) : null;
-        })()}
+        <MultiSelect
+          label="Marca"
+          options={availableMarcas}
+          selected={pendingMarcas}
+          onChange={setPendingMarcas}
+          placeholder="Todas las marcas"
+        />
 
-        {/* Badge del filtro activo + limpiar */}
-        {(selMarca !== "Todos" || selTienda !== "Todos") && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ background: "rgba(59,130,246,0.15)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 10, padding: "2px 10px", fontSize: "0.68rem", fontWeight: 600 }}>
-              {selTienda !== "Todos"
-                ? marcaMap.find((m) => m.marca === selMarca)?.tiendas.find((t) => t.local === selTienda)?.tienda ?? selTienda
-                : selMarca}
-            </span>
-            <button onClick={() => { setSelMarca("Todos"); setSelTienda("Todos"); }} style={{ background: "transparent", border: "none", color: MUTED, fontSize: "0.7rem", cursor: "pointer", padding: "2px 6px" }}>✕ Limpiar</button>
-          </div>
+        {(pendingMarcas.length > 0 || pendingPols.length > 0) && availableTiendas.length > 1 && (
+          <MultiSelect
+            label="Tienda"
+            options={availableTiendas}
+            selected={pendingTiendas}
+            onChange={setPendingTiendas}
+            getLabel={(t) => t.tienda}
+            getValue={(t) => t.local}
+            placeholder="Todas las tiendas"
+          />
+        )}
+
+        {/* Botón Aplicar — solo aparece si hay cambios pendientes */}
+        {hasChanges && (
+          <button onClick={applyFilters} style={{
+            padding: "4px 14px", borderRadius: 6, border: "none",
+            background: BLUE, color: "#fff", fontSize: "0.73rem",
+            cursor: "pointer", fontWeight: 700,
+          }}>
+            Aplicar
+          </button>
+        )}
+
+        {/* Limpiar — solo si hay filtros aplicados */}
+        {(appliedPols.length > 0 || appliedMarcas.length > 0 || appliedTiendas.length > 0) && !hasChanges && (
+          <button onClick={clearFilters} style={{
+            padding: "4px 10px", borderRadius: 6,
+            border: `1px solid ${BORDER}`, background: "transparent",
+            color: MUTED, fontSize: "0.7rem", cursor: "pointer",
+          }}>
+            ✕ Limpiar
+          </button>
         )}
       </div>
 
