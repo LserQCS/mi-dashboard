@@ -584,11 +584,23 @@ export default async function handler(req, res) {
   const range  = defaultRange(req.query.desde, req.query.hasta);
   const ciudad = req.query.ciudad ?? "Todos";
   const local  = req.query.local  ?? "Todos";
+  const marca  = req.query.marca  ?? "Todos";
 
   const extraWhereCity = buildExtraWhere(ciudad);
-  const localWhere = (local && local !== "Todos")
-    ? `AND TRIM(IFNULL(\`local\`,'')) = '${local.replace(/'/g, "\\'")}'`
-    : "";
+
+  // localWhere: specific tienda (local param) OR all tiendas of a marca
+  let localWhere = "";
+  if (local && local !== "Todos") {
+    localWhere = `AND TRIM(IFNULL(\`local\`,'')) = '${local.replace(/'/g, "\\'")}'`;
+  } else if (marca && marca !== "Todos") {
+    const localsForMarca = Object.entries(MARCA_TIENDA_TO_LOCAL)
+      .filter(([key]) => key.split("|")[0].trim() === marca)
+      .map(([, loc]) => `'${loc.replace(/'/g, "\\'")}'`);
+    if (localsForMarca.length > 0) {
+      localWhere = `AND TRIM(IFNULL(\`local\`,'')) IN (${localsForMarca.join(", ")})`;
+    }
+  }
+
   const extraWhere = [extraWhereCity, localWhere].filter(Boolean).join("\n      ");
   const bqFull = { ...range, extraWhere };
   const bqCity = { ...range, extraWhere: extraWhereCity };
@@ -650,10 +662,24 @@ export default async function handler(req, res) {
   if (r_local.status      === "rejected") errors.push({ source: "porLocal",       msg: r_local.reason?.message });
   if (errors.length) console.error("[Analisis API] query errors:", JSON.stringify(errors));
 
+  // Build marcaMap: only marcas/tiendas whose local appears in current data
+  const localesSet = new Set(locales);
+  const marcaMapRaw = {};
+  for (const [key, loc] of Object.entries(MARCA_TIENDA_TO_LOCAL)) {
+    if (!localesSet.has(loc)) continue;
+    const [m, t] = key.split("|");
+    const mTrim = m.trim(), tTrim = t?.trim() ?? "";
+    if (!marcaMapRaw[mTrim]) marcaMapRaw[mTrim] = [];
+    marcaMapRaw[mTrim].push({ tienda: tTrim, local: loc });
+  }
+  const marcaMap = Object.entries(marcaMapRaw)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([m, tiendas]) => ({ marca: m, tiendas: tiendas.sort((a, b) => a.tienda.localeCompare(b.tienda)) }));
+
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
   return res.status(200).json({
     kpis, proveedor, porPoligono, porHora, conductores,
-    brecha, locales, pedidos, rechazos,
+    brecha, locales, marcaMap, pedidos, rechazos,
     tendEtapas, etapasPorHora, driverEtapas,
     porLocal, porMarca,
     range, errors,

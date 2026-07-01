@@ -197,29 +197,32 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
   const [error, setError]     = useState(null);
   const selSemanas = extSemanas ?? ALL_SEMANAS_BRECHA;
   const [showCond, setShowCond] = useState(false);
-  const [selLocal, setSelLocal] = useState("Todos");
+  const [selMarca, setSelMarca] = useState("Todos");
+  const [selTienda, setSelTienda] = useState("Todos");
 
-  // Reset local cuando cambia ciudad
-  useEffect(() => { setSelLocal("Todos"); }, [selCiudad]);
+  // Reset tienda cuando cambia marca o ciudad
+  useEffect(() => { setSelTienda("Todos"); }, [selMarca]);
+  useEffect(() => { setSelMarca("Todos"); setSelTienda("Todos"); }, [selCiudad]);
 
   useEffect(() => {
     if (!desde || !hasta) return;
     setLoading(true); setError(null);
     const qs = new URLSearchParams({ desde, hasta });
-    if (selCiudad !== "Todos") qs.set("ciudad", selCiudad);
-    if (selLocal  !== "Todos") qs.set("local",  selLocal);
+    if (selCiudad  !== "Todos") qs.set("ciudad", selCiudad);
+    if (selTienda  !== "Todos") qs.set("local",  selTienda);
+    else if (selMarca !== "Todos") qs.set("marca", selMarca);
     fetch(`/api/Analisis?${qs.toString()}`)
       .then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [desde, hasta, selCiudad, selLocal]);
+  }, [desde, hasta, selCiudad, selMarca, selTienda]);
 
   if (loading) return <div style={{ textAlign: "center", padding: "3rem", color: MUTED }}>Cargando análisis…</div>;
   if (error)   return <div style={{ color: RED, padding: "1rem" }}>Error: {error}</div>;
   if (!data)   return null;
 
-  const locales = data.locales ?? [];
+  const marcaMap = data.marcaMap ?? [];
 
   const k           = data.kpis ?? {};
   const totalPed    = Number(k.total_pedidos) || 0;
@@ -282,24 +285,57 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
         </div>
       )}
 
-      {/* ── Filtro Local ──────────────────────────────────────────────────── */}
-      {locales.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
-          <span style={{ color: MUTED, fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Local</span>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {["Todos", ...locales].map((loc) => (
-              <button key={loc} onClick={() => setSelLocal(loc)} style={{
-                padding: "4px 12px", borderRadius: 16,
-                border: selLocal === loc ? "1px solid #3b82f6" : "1px solid #334155",
-                background: selLocal === loc ? "rgba(59,130,246,0.18)" : "transparent",
-                color: selLocal === loc ? "#93c5fd" : MUTED,
-                fontSize: "0.73rem", fontWeight: selLocal === loc ? 600 : 400,
-                cursor: "pointer", whiteSpace: "nowrap",
-              }}>{loc}</button>
+      {/* ── Filtro Marca / Tienda ────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem", flexWrap: "wrap" }}>
+        <span style={{ color: MUTED, fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Filtrar por</span>
+
+        {/* Marca select */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ color: MUTED, fontSize: "0.7rem" }}>Marca</span>
+          <select
+            value={selMarca}
+            onChange={(e) => setSelMarca(e.target.value)}
+            style={{ background: CARD, border: `1px solid ${BORDER}`, color: selMarca !== "Todos" ? TEXT : MUTED, borderRadius: 6, padding: "4px 8px", fontSize: "0.73rem", cursor: "pointer", minWidth: 140 }}
+          >
+            <option value="Todos">Todas las marcas</option>
+            {marcaMap.map(({ marca }) => (
+              <option key={marca} value={marca}>{marca}</option>
             ))}
-          </div>
+          </select>
         </div>
-      )}
+
+        {/* Tienda select — solo aparece si hay una marca seleccionada */}
+        {selMarca !== "Todos" && (() => {
+          const tiendas = marcaMap.find((m) => m.marca === selMarca)?.tiendas ?? [];
+          return tiendas.length > 1 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ color: MUTED, fontSize: "0.7rem" }}>Tienda</span>
+              <select
+                value={selTienda}
+                onChange={(e) => setSelTienda(e.target.value)}
+                style={{ background: CARD, border: `1px solid ${BLUE}`, color: selTienda !== "Todos" ? TEXT : MUTED, borderRadius: 6, padding: "4px 8px", fontSize: "0.73rem", cursor: "pointer", minWidth: 140 }}
+              >
+                <option value="Todos">Todas las tiendas</option>
+                {tiendas.map(({ tienda, local }) => (
+                  <option key={local} value={local}>{tienda}</option>
+                ))}
+              </select>
+            </div>
+          ) : null;
+        })()}
+
+        {/* Badge del filtro activo + limpiar */}
+        {(selMarca !== "Todos" || selTienda !== "Todos") && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ background: "rgba(59,130,246,0.15)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 10, padding: "2px 10px", fontSize: "0.68rem", fontWeight: 600 }}>
+              {selTienda !== "Todos"
+                ? marcaMap.find((m) => m.marca === selMarca)?.tiendas.find((t) => t.local === selTienda)?.tienda ?? selTienda
+                : selMarca}
+            </span>
+            <button onClick={() => { setSelMarca("Todos"); setSelTienda("Todos"); }} style={{ background: "transparent", border: "none", color: MUTED, fontSize: "0.7rem", cursor: "pointer", padding: "2px 6px" }}>✕ Limpiar</button>
+          </div>
+        )}
+      </div>
 
       {/* KPI Cards */}
       <div style={{ display: "flex", gap: 10, marginBottom: "1rem", flexWrap: "wrap" }}>
