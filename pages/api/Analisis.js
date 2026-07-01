@@ -12,6 +12,9 @@ import {
   getTopConductores,
   getLocales,
   getPedidos,
+  getTendenciaAsig,
+  getAsigPorHora,
+  getDriverAsig,
 } from "../../lib/bigquery";
 
 // ─── Filtro ciudad → BigQuery ────────────────────────────────────────────────
@@ -540,7 +543,8 @@ export default async function handler(req, res) {
   const bqFull = { ...range, extraWhere };
   const bqCity = { ...range, extraWhere: extraWhereCity };
 
-  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_turnos, r_locales, r_pedidos] =
+  const [r_kpis, r_prov, r_pol, r_hora, r_cond, r_turnos, r_locales, r_pedidos,
+         r_tendAsig, r_asigHora, r_driverAsig] =
     await Promise.allSettled([
       getKPIs(bqFull),
       getCumplimientoPorProveedor(bqCity),
@@ -550,18 +554,24 @@ export default async function handler(req, res) {
       fetchTurnosData(),
       getLocales(bqCity),
       getPedidos(bqFull),
+      getTendenciaAsig(bqFull),
+      getAsigPorHora(bqFull),
+      getDriverAsig(bqFull),
     ]);
 
   const safe = (r, fallback) => (r.status === "fulfilled" ? r.value : fallback);
 
-  const kpis        = safe(r_kpis,    {});
-  const proveedor   = safe(r_prov,    []);
-  const porPoligono = safe(r_pol,     []);
-  const porHora     = safe(r_hora,    []);
-  const conductores = safe(r_cond,    []);
-  const turnosData  = safe(r_turnos,  { brecha: [], turnosDetalle: [] });
+  const kpis        = safe(r_kpis,      {});
+  const proveedor   = safe(r_prov,      []);
+  const porPoligono = safe(r_pol,       []);
+  const porHora     = safe(r_hora,      []);
+  const conductores = safe(r_cond,      []);
+  const turnosData  = safe(r_turnos,    { brecha: [], turnosDetalle: [] });
   const brecha      = filterBrechaByCiudad(turnosData.brecha, ciudad);
-  const locales     = safe(r_locales, []).map((r) => r.local).filter(Boolean);
+  const locales     = safe(r_locales,   []).map((r) => r.local).filter(Boolean);
+  const tendAsig    = safe(r_tendAsig,  []);
+  const asigPorHora = safe(r_asigHora,  []);
+  const driverAsig  = safe(r_driverAsig,[]);
 
   const flatRow = (row) => {
     const out = {};
@@ -585,6 +595,8 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=60");
   return res.status(200).json({
     kpis, proveedor, porPoligono, porHora, conductores,
-    brecha, locales, pedidos, rechazos, range, errors,
+    brecha, locales, pedidos, rechazos,
+    tendAsig, asigPorHora, driverAsig,
+    range, errors,
   });
 }

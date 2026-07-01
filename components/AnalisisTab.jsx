@@ -315,11 +315,15 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           color={cumplPct >= 60 ? GREEN : cumplPct >= 40 ? YELLOW : RED} />
         <KpiCard label="Tiempo prom. entrega"  value={`${fmt1(avgMin)} min`}
           color={avgMin <= 45 ? GREEN : avgMin <= 60 ? YELLOW : RED} />
+        <KpiCard label="Avg asignación"
+          value={`${fmt1(Number(k.avg_asignacion))} min`}
+          sub={`objetivo ≤5 min`}
+          color={Number(k.avg_asignacion) <= 5 ? GREEN : Number(k.avg_asignacion) <= 10 ? YELLOW : RED} />
+        <KpiCard label="Pedidos asig >5 min"
+          value={totalFuera > 0 ? `${pct(cA, totalPed)}%` : "—"}
+          sub={`${cA} de ${totalPed} pedidos`}
+          color={pct(cA, totalPed) <= 10 ? GREEN : pct(cA, totalPed) <= 25 ? YELLOW : RED} />
         <KpiCard label="Drivers activos"       value={Number(k.drivers_activos) || "—"} />
-        <KpiCard label="% Órdenes Yango"
-          value={totalPed > 0 ? `${pct(Number(k.pedidos_yango)||0, totalPed)}%` : "—"}
-          sub={`${Number(k.pedidos_yango)||0} de ${totalPed}`}
-          color={pct(Number(k.pedidos_yango)||0, totalPed) > 30 ? ORANGE : TEXT} />
       </div>
 
       {/* Árbol de causas */}
@@ -387,6 +391,188 @@ export default function AnalisisTab({ desde, hasta, selSemanas: extSemanas, selC
           </div>
         </div>
       </div>
+
+      {/* ── ⚡ Análisis de Asignación ───────────────────────────────────────── */}
+      {(data.tendAsig?.length > 0 || data.driverAsig?.length > 0 || data.asigPorHora?.length > 0) && (
+        <div style={{ ...card, marginBottom: "1rem" }}>
+          <h3 style={{ margin: "0 0 0.25rem", fontSize: "0.95rem", fontWeight: 700 }}>
+            ⚡ Análisis de Asignación
+          </h3>
+          <p style={{ margin: "0 0 0.75rem", color: MUTED, fontSize: "0.73rem" }}>
+            La etapa con más impacto en demoras — cuándo ocurre, en qué drivers y si mejora o empeora
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "1rem" }}>
+
+            {/* Tendencia diaria */}
+            {data.tendAsig?.length > 0 && (
+              <div>
+                <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+                  % pedidos con asig &gt;5 min por día
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80 }}>
+                  {data.tendAsig.map((r) => {
+                    const pctL = parseFloat(r.pct_asig_lenta) || 0;
+                    const barH = Math.max(4, Math.round((pctL / 100) * 76));
+                    const col = pctL >= 50 ? RED : pctL >= 25 ? ORANGE : pctL >= 10 ? YELLOW : GREEN;
+                    const label = String(r.fecha ?? "").slice(5); // MM-DD
+                    return (
+                      <div key={r.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                        <div title={`${r.fecha}: ${pctL}% asig lenta (avg ${r.avg_asig} min)`}
+                          style={{ width: "100%", height: barH, background: col, borderRadius: "3px 3px 0 0", cursor: "default" }} />
+                        <span style={{ fontSize: "0.5rem", color: MUTED, writingMode: "vertical-rl", transform: "rotate(180deg)", lineHeight: 1 }}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: "0.62rem", color: MUTED, marginTop: 4 }}>
+                  <span style={{ color: GREEN }}>■</span> &lt;10% &nbsp;
+                  <span style={{ color: YELLOW }}>■</span> 10-25% &nbsp;
+                  <span style={{ color: ORANGE }}>■</span> 25-50% &nbsp;
+                  <span style={{ color: RED }}>■</span> &gt;50%
+                </div>
+              </div>
+            )}
+
+            {/* Por hora */}
+            {data.asigPorHora?.length > 0 && (
+              <div>
+                <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+                  Avg asignación por hora del día (min)
+                </div>
+                {(() => {
+                  const map = {};
+                  for (const r of data.asigPorHora) map[Number(r.hora)] = r;
+                  const full = Array.from({ length: 24 }, (_, i) => map[i] ?? { hora: i, avg_asig: 0, total: 0 });
+                  const maxA = Math.max(...full.map(r => parseFloat(r.avg_asig) || 0), 1);
+                  return (
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80 }}>
+                      {full.map((r) => {
+                        const a = parseFloat(r.avg_asig) || 0;
+                        const barH = a === 0 ? 0 : Math.max(3, Math.round((a / maxA) * 76));
+                        const col = a > 10 ? RED : a > 5 ? ORANGE : a > 0 ? GREEN : BORDER;
+                        return (
+                          <div key={r.hora} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                            <div title={`${r.hora}h: ${a} min avg asig`}
+                              style={{ width: "100%", height: barH, background: col, borderRadius: "2px 2px 0 0", cursor: "default", minHeight: a > 0 ? 3 : 0 }} />
+                            {r.hora % 3 === 0 && <span style={{ fontSize: "0.5rem", color: MUTED }}>{r.hora}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                <div style={{ fontSize: "0.62rem", color: MUTED, marginTop: 4 }}>
+                  <span style={{ color: GREEN }}>■</span> ≤5 min &nbsp;
+                  <span style={{ color: ORANGE }}>■</span> 5-10 &nbsp;
+                  <span style={{ color: RED }}>■</span> &gt;10 min
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Drivers con asig más lenta */}
+          {data.driverAsig?.length > 0 && (
+            <>
+              <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
+                Drivers por tiempo de asignación (mayor a menor)
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.73rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      {["Driver","Pedidos","Avg asig","% Asig >5","% Cumpl ≤45","Barra asig"].map((h) => (
+                        <th key={h} style={{ padding: "5px 8px", textAlign: h === "Driver" ? "left" : "right", color: MUTED, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.driverAsig.slice(0, 15).map((r, i) => {
+                      const avg = parseFloat(r.avg_asig) || 0;
+                      const pctL = parseFloat(r.pct_asig_lenta) || 0;
+                      const pctK = parseFloat(r.pct_ok) || 0;
+                      const colA = avg > 10 ? RED : avg > 5 ? ORANGE : GREEN;
+                      const maxAsig = Math.max(...data.driverAsig.map(x => parseFloat(x.avg_asig) || 0), 1);
+                      return (
+                        <tr key={r.nombre_conductor} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                          <td style={{ padding: "5px 8px", color: TEXT }}>{r.nombre_conductor}</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", color: MUTED }}>{Number(r.total)}</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: colA }}>{avg} min</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", color: pctL >= 50 ? RED : pctL >= 25 ? ORANGE : YELLOW }}>{pctL}%</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", color: pctK >= 70 ? GREEN : pctK >= 40 ? YELLOW : RED }}>{pctK}%</td>
+                          <td style={{ padding: "5px 8px", width: 100 }}>
+                            <div style={{ background: BORDER, borderRadius: 4, height: 6, overflow: "hidden" }}>
+                              <div style={{ width: `${Math.min(100, (avg / maxAsig) * 100)}%`, height: 6, background: colA, borderRadius: 4 }} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 🚫 Rechazos por Driver ──────────────────────────────────────────── */}
+      {rechazos.length > 0 && (
+        <div style={{ ...card, marginBottom: "1rem" }}>
+          <h3 style={{ margin: "0 0 0.25rem", fontSize: "0.95rem", fontWeight: 700 }}>
+            🚫 Rechazos — Disponibles que no tomaron pedidos
+          </h3>
+          <p style={{ margin: "0 0 0.75rem", color: MUTED, fontSize: "0.73rem" }}>
+            Pedidos con asig &gt;5 min donde había drivers en turno, disponibles, sin entrega activa y que no aceptaron
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+            {/* Bar chart por driver */}
+            <div>
+              <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
+                Drivers con más rechazos detectados
+              </div>
+              {(() => {
+                const map = new Map();
+                for (const r of rechazos) for (const d of r.no_tomaron) map.set(d, (map.get(d) || 0) + 1);
+                const top = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+                const maxV = top[0]?.[1] || 1;
+                return top.map(([name, cnt]) => (
+                  <div key={name} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                    <span style={{ color: TEXT, fontSize: "0.72rem", minWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+                    <div style={{ flex: 1, background: BORDER, borderRadius: 4, height: 8, overflow: "hidden" }}>
+                      <div style={{ width: `${(cnt / maxV) * 100}%`, height: 8, background: RED, borderRadius: 4 }} />
+                    </div>
+                    <span style={{ color: RED, fontWeight: 700, fontSize: "0.72rem", minWidth: 24, textAlign: "right" }}>{cnt}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Rechazos por polígono */}
+            <div>
+              <div style={{ color: MUTED, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
+                Rechazos por polígono
+              </div>
+              {(() => {
+                const map = new Map();
+                for (const r of rechazos) map.set(r.poligono || "—", (map.get(r.poligono || "—") || 0) + 1);
+                const rows = [...map.entries()].sort((a, b) => b[1] - a[1]);
+                const maxV = rows[0]?.[1] || 1;
+                return rows.map(([pol, cnt]) => (
+                  <div key={pol} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                    <span style={{ color: TEXT, fontSize: "0.72rem", minWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pol}</span>
+                    <div style={{ flex: 1, background: BORDER, borderRadius: 4, height: 8, overflow: "hidden" }}>
+                      <div style={{ width: `${(cnt / maxV) * 100}%`, height: 8, background: ORANGE, borderRadius: 4 }} />
+                    </div>
+                    <span style={{ color: ORANGE, fontWeight: 700, fontSize: "0.72rem", minWidth: 24, textAlign: "right" }}>{cnt}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Por polígono */}
       {porPol.length > 0 && (
