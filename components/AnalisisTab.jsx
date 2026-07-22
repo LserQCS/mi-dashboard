@@ -209,11 +209,27 @@ function MultiSelect({ label, options, selected, onChange, getLabel = (o) => o, 
           minWidth: 200, maxHeight: 260, overflowY: "auto",
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         }}>
-          <div
-            onClick={selectAll}
-            style={{ padding: "7px 12px", fontSize: "0.7rem", color: selected.length === 0 ? BLUE : MUTED, cursor: "pointer", borderBottom: `1px solid ${BORDER}`, fontWeight: 600 }}
-          >
-            ✓ Todos
+          <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
+            <div
+              onClick={selectAll}
+              style={{ flex: 1, padding: "7px 12px", fontSize: "0.7rem", color: selected.length === 0 ? BLUE : MUTED, cursor: "pointer", fontWeight: 600, textAlign: "center" }}
+            >
+              ✓ Todos
+            </div>
+            <div style={{ width: 1, background: BORDER }} />
+            <div
+              onClick={() => onChange(options.map(getValue))}
+              style={{ flex: 1, padding: "7px 12px", fontSize: "0.7rem", color: selected.length === options.length ? BLUE : MUTED, cursor: "pointer", fontWeight: 600, textAlign: "center" }}
+            >
+              ☑ Marcar todos
+            </div>
+            <div style={{ width: 1, background: BORDER }} />
+            <div
+              onClick={() => onChange([])}
+              style={{ flex: 1, padding: "7px 12px", fontSize: "0.7rem", color: MUTED, cursor: "pointer", fontWeight: 600, textAlign: "center" }}
+            >
+              ✕ Ninguno
+            </div>
           </div>
           {options.map((opt) => {
             const val = getValue(opt);
